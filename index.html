@@ -1,22 +1,591 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="rw">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0f766e"><meta name="description" content="Motari ihuza abamotari n'abagenzi bari hafi yabo.">
-  <title>Motari — Rwanda</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>MOTARI - Shaka Moto</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #f3f6f4;
+      color: #202820;
+    }
+
+    header {
+      background: #087443;
+      color: white;
+      text-align: center;
+      padding: 22px 12px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 32px;
+    }
+
+    header p {
+      margin-bottom: 0;
+    }
+
+    main {
+      max-width: 520px;
+      margin: 20px auto;
+      padding: 15px;
+    }
+
+    .card {
+      background: white;
+      padding: 20px;
+      margin-bottom: 18px;
+      border-radius: 12px;
+      box-shadow: 0 2px 9px #00000012;
+    }
+
+    h2 {
+      color: #087443;
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: bold;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 7px;
+      border-radius: 7px;
+      font-size: 16px;
+    }
+
+    input, select {
+      border: 1px solid #ccc;
+      background: white;
+    }
+
+    button {
+      border: none;
+      background: #087443;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+    }
+
+    .secondary {
+      background: #e8f3ec;
+      color: #075c36;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #message {
+      padding: 12px;
+      border-radius: 8px;
+      overflow-wrap: anywhere;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: #555;
+    }
+  </style>
 </head>
+
 <body>
-<header class="topbar"><div class="brand-mark">M</div><div><strong>Motari</strong><small>RWANDA</small></div><span class="status"><i></i> Beta</span></header>
+
+<header>
+  <h1>🏍️ MOTARI</h1>
+  <p>Huza n'umumotari uri hafi yawe!</p>
+</header>
+
 <main>
-<section class="hero"><p class="eyebrow">URUGENDO RWAWE, BYOROSHYE</p><h1>Shaka moto.<br><span>Wegerejwe.</span></h1><p class="intro">Motari ihuza abamotari n'abagenzi bari hafi yawe ukoresheje ikarita.</p>
-<div class="role-switch" role="group" aria-label="Hitamo uko ukoresha"><button class="role active" data-role="passenger">Ndi umugenzi</button><button class="role" data-role="rider">Ndi umumotari</button></div></section>
-<section class="panel"><div class="panel-heading"><div><h2 id="actionTitle">Shaka umumotari uri hafi</h2><p id="actionDesc">Emera location kugira ngo tubone aho uri.</p></div><span class="pin">⌖</span></div>
-<button id="locationBtn" class="primary">📍 Koresha aho ndi</button><p id="locationStatus" class="notice" aria-live="polite">Location ntirakoreshwa. Kanda buto iri hejuru.</p>
-<div id="map" aria-label="Ikarita y'aho uherereye"></div><div class="map-legend"><span><b class="dot you"></b> Aho ndi</span><span><b class="dot other"></b> Umumotari / umugenzi</span></div></section>
-<section class="panel request-panel"><h2 id="requestTitle">Saba moto</h2><p id="requestDesc">Ohereza ubusabe ku mumotari uri hafi nyuma yo guhuza backend.</p><label for="phone">Nimero ya telefoni</label><input id="phone" type="tel" placeholder="Urugero: 07XXXXXXXX" autocomplete="tel"><button id="requestBtn" class="primary">Ohereza ubusabe</button><p id="requestStatus" class="notice" aria-live="polite">Iyi ni prototype: ubusabe ntiburagera ku mumotari nyakuri.</p></section>
-<section class="features"><article><span>📍</span><h3>Live location</h3><p>Reba aho uri kuri GPS ya telefoni.</p></article><article><span>🛵</span><h3>Abari hafi</h3><p>Intego ni kubona abamotari n'abagenzi bari hafi.</p></article><article><span>🔒</span><h3>Umutekano</h3><p>Location igomba gusangizwa gusa igihe ubikeneye.</p></article></section>
-</main><footer>© <span id="year"></span> Motari · Prototype</footer>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="app.js"></script>
-<script>if("serviceWorker"in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.error));}</script>
-</body></html>
+
+  <div class="card">
+    <h2>Murakaza neza kuri MOTARI</h2>
+    <p>
+      Shaka moto cyangwa wiyandikishe nk'umumotari.
+      Tangira ukoresheje konti yawe.
+    </p>
+    <p id="message">Tegereza gato...</p>
+  </div>
+
+  <section id="authSection" class="card">
+
+    <h2>Fungura konti</h2>
+
+    <form id="signupForm">
+
+      <label for="fullName">Amazina yawe</label>
+      <input id="fullName" required
+             autocomplete="name"
+             placeholder="Andika amazina yawe">
+
+      <label for="phone">Numero ya telefone</label>
+      <input id="phone" required
+             type="tel"
+             autocomplete="tel"
+             placeholder="Urugero: 07XXXXXXXX">
+
+      <label for="role">Hitamo ubwoko bwa konti</label>
+      <select id="role" required>
+        <option value="passenger">Umugenzi</option>
+        <option value="rider">Umumotari</option>
+      </select>
+
+      <label for="signupEmail">Email</label>
+      <input id="signupEmail" type="email"
+             autocomplete="email" required
+             placeholder="Email yawe">
+
+      <label for="signupPassword">Ijambo ry'ibanga</label>
+      <input id="signupPassword" type="password"
+             autocomplete="new-password"
+             minlength="8" required
+             placeholder="Nibura inyuguti 8">
+
+      <button type="submit">Iyandikishe</button>
+
+    </form>
+
+    <hr>
+
+    <h2>Usanzwe ufite konti?</h2>
+
+    <form id="loginForm">
+
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="email"
+             autocomplete="email" required>
+
+      <label for="loginPassword">Ijambo ry'ibanga</label>
+      <input id="loginPassword" type="password"
+             autocomplete="current-password" required>
+
+      <button type="submit">Injira</button>
+
+    </form>
+
+  </section>
+
+  <section id="appSection" class="card hidden">
+
+    <h2>Konti yawe ya MOTARI</h2>
+
+    <p id="welcome"></p>
+    <p id="accountRole"></p>
+
+    <div id="riderTools" class="hidden">
+      <h2>🏍️ Umumotari</h2>
+
+      <p>
+        Kanda hano kugira ngo wemere ko telefone yawe
+        itanga aho uherereye.
+      </p>
+
+      <button id="locationButton">
+        Sangiza MOTARI aho ndi
+      </button>
+    </div>
+
+    <div id="passengerTools" class="hidden">
+      <h2>🚕 Saba moto</h2>
+
+      <label for="destination">
+        Aho ushaka kujya
+      </label>
+
+      <input id="destination"
+             placeholder="Urugero: Kigali Convention Centre">
+
+      <button id="requestButton">
+        Saba moto
+      </button>
+    </div>
+
+    <button id="refreshButton" class="secondary">
+      Reba ibyifuzo byanjye
+    </button>
+
+    <div id="requests"></div>
+
+    <button id="logoutButton" class="secondary">
+      Sohoka muri konti
+    </button>
+
+  </section>
+
+</main>
+
+<footer>
+  <p>© 2026 MOTARI — Shaka moto, ugere iyo ujya.</p>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+  // SHYIRAMO AMAKURU YAWE YA SUPABASE HANO
+  const SUPABASE_URL = "SHYIRAMO_PROJECT_URL";
+  const SUPABASE_KEY = "SHYIRAMO_PUBLISHABLE_KEY";
+
+  const client = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_KEY
+  );
+
+  const $ = id => document.getElementById(id);
+
+  let currentUser = null;
+  let currentProfile = null;
+  let currentPosition = null;
+
+  function message(text) {
+    $("message").textContent = text;
+  }
+
+  function showError(error) {
+    console.error(error);
+    message(error.message || "Habaye ikibazo. Ongera ugerageze.");
+  }
+
+  async function ensureProfile(user) {
+    const { data: profile, error } = await client
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    if (profile) {
+      currentProfile = profile;
+      return profile;
+    }
+
+    const metadata = user.user_metadata || {};
+
+    const fullName = metadata.full_name || "";
+    const phone = metadata.phone || "";
+    const role = metadata.role || "";
+
+    if (!fullName || !role) {
+      throw new Error(
+        "Amakuru ya konti ntiyuzuye. Ongera wiyandikishe cyangwa saba ubufasha."
+      );
+    }
+
+    const { data, error: insertError } = await client
+      .from("profiles")
+      .insert({
+        id: user.id,
+        full_name: fullName,
+        phone: phone || null,
+        role: role
+      })
+      .select()
+      .single();
+
+    if (insertError) throw insertError;
+
+    currentProfile = data;
+    return data;
+  }
+
+  async function openApp(user) {
+    currentUser = user;
+
+    try {
+      const profile = await ensureProfile(user);
+
+      $("authSection").classList.add("hidden");
+      $("appSection").classList.remove("hidden");
+
+      $("welcome").textContent =
+        "Muraho, " + profile.full_name + "!";
+
+      $("accountRole").textContent =
+        profile.role === "rider"
+          ? "Konti y'umumotari"
+          : "Konti y'umugenzi";
+
+      $("riderTools").classList.toggle(
+        "hidden", profile.role !== "rider"
+      );
+
+      $("passengerTools").classList.toggle(
+        "hidden", profile.role !== "passenger"
+      );
+
+      message("Winjiye muri MOTARI neza.");
+
+      await loadRequests();
+
+    } catch (error) {
+      showError(error);
+    }
+  }
+
+  $("signupForm").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    message("Turimo gukora konti yawe...");
+
+    const fullName = $("fullName").value.trim();
+    const phone = $("phone").value.trim();
+    const role = $("role").value;
+    const email = $("signupEmail").value.trim();
+    const password = $("signupPassword").value;
+
+    try {
+      const { data, error } = await client.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone,
+            role
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.session && data.user) {
+        await openApp(data.user);
+      } else {
+        message(
+          "Konti yatangiye gukorwa. Reba email yawe wemeze konti, " +
+          "hanyuma winjire ukoresheje email n'ijambo ry'ibanga."
+        );
+      }
+
+    } catch (error) {
+      showError(error);
+    }
+  });
+
+  $("loginForm").addEventListener("submit", async event => {
+    event.preventDefault();
+
+    message("Turimo kukwinjiza...");
+
+    try {
+      const { data, error } = await client.auth.signInWithPassword({
+        email: $("loginEmail").value.trim(),
+        password: $("loginPassword").value
+      });
+
+      if (error) throw error;
+
+      await openApp(data.user);
+
+    } catch (error) {
+      showError(error);
+    }
+  });
+
+  $("locationButton").addEventListener("click", async () => {
+    if (!navigator.geolocation) {
+      message("Telefone yawe ntiyemera GPS muri uru rubuga.");
+      return;
+    }
+
+    message("Turimo gushaka aho uherereye...");
+
+    navigator.geolocation.getCurrentPosition(
+      async position => {
+        try {
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+
+          const { error } = await client
+            .from("rider_locations")
+            .upsert({
+              rider_id: currentUser.id,
+              latitude,
+              longitude,
+              updated_at: new Date().toISOString()
+            });
+
+          if (error) throw error;
+
+          currentPosition = { latitude, longitude };
+
+          message(
+            "Aho uherereye habitswe neza. " +
+            "Komeza gufungura MOTARI kugira ngo uvugurure aho uri."
+          );
+
+        } catch (error) {
+          showError(error);
+        }
+      },
+      error => {
+        message(
+          "Ntabwo tubonye aho uherereye. Emerera browser gukoresha GPS."
+        );
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000
+      }
+    );
+  });
+
+  $("requestButton").addEventListener("click", async () => {
+    const destination = $("destination").value.trim();
+
+    if (!destination) {
+      message("Banza wandike aho ushaka kujya.");
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      message("Telefone yawe ntishobora gutanga GPS.");
+      return;
+    }
+
+    message("Turimo gufata aho uherereye...");
+
+    navigator.geolocation.getCurrentPosition(
+      async position => {
+        try {
+          const { error } = await client
+            .from("ride_requests")
+            .insert({
+              passenger_id: currentUser.id,
+              pickup_latitude: position.coords.latitude,
+              pickup_longitude: position.coords.longitude,
+              destination: destination
+            });
+
+          if (error) throw error;
+
+          message(
+            "Icyifuzo cyawe cyoherejwe. " +
+            "Kureba umugenzi cyangwa kubona umumotari " +
+            "bisaba ko dutegura n'uburyo bwo guhuza abakoresha."
+          );
+
+          await loadRequests();
+
+        } catch (error) {
+          showError(error);
+        }
+      },
+      () => {
+        message("Emera GPS kugira ngo usabe moto.");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000
+      }
+    );
+  });
+
+  async function loadRequests() {
+    if (!currentUser || !currentProfile) return;
+
+    const { data, error } = await client
+      .from("ride_requests")
+      .select("id, destination, status, created_at")
+      .eq("passenger_id", currentUser.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error(error);
+      $("requests").textContent =
+        "Ntitwabashije kubona ibyifuzo byawe ubu.";
+      return;
+    }
+
+    $("requests").replaceChildren();
+
+    const title = document.createElement("h3");
+    title.textContent = "Ibyifuzo by'ingendo";
+    $("requests").appendChild(title);
+
+    if (!data || data.length === 0) {
+      const empty = document.createElement("p");
+      empty.textContent = "Nta cyifuzo urasaba.";
+      $("requests").appendChild(empty);
+      return;
+    }
+
+    data.forEach(item => {
+      const row = document.createElement("p");
+      row.textContent =
+        "Aho ujya: " + (item.destination || "Ntabwo hazwi") +
+        " — Status: " + item.status;
+      $("requests").appendChild(row);
+    });
+  }
+
+  $("refreshButton").addEventListener("click", loadRequests);
+
+  $("logoutButton").addEventListener("click", async () => {
+    const { error } = await client.auth.signOut();
+
+    if (error) {
+      showError(error);
+      return;
+    }
+
+    currentUser = null;
+    currentProfile = null;
+
+    $("appSection").classList.add("hidden");
+    $("authSection").classList.remove("hidden");
+
+    message("Wasohotse muri konti.");
+  });
+
+  async function start() {
+    if (
+      SUPABASE_URL === "SHYIRAMO_PROJECT_URL" ||
+      SUPABASE_KEY === "SHYIRAMO_PUBLISHABLE_KEY"
+    ) {
+      message(
+        "Website irateguwe. Hasigaye gushyiramo Project URL na Publishable key."
+      );
+      return;
+    }
+
+    try {
+      const { data, error } = await client.auth.getSession();
+
+      if (error) throw error;
+
+      if (data.session) {
+        await openApp(data.session.user);
+      } else {
+        message("Iyandikishe cyangwa winjire muri MOTARI.");
+      }
+
+    } catch (error) {
+      showError(error);
+    }
+  }
+
+  start();
+</script>
+
+</body>
+</html>
