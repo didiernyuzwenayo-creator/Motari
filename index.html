@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="rw">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f766e"><meta name="description" content="Motari ihuza abamotari n'abagenzi bari hafi yabo.">
+  <title>Motari — Rwanda</title><link rel="manifest" href="manifest.json"><link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+</head>
+<body>
+<header class="topbar"><div class="brand-mark">M</div><div><strong>Motari</strong><small>RWANDA</small></div><span class="status"><i></i> Beta</span></header>
+<main>
+<section class="hero"><p class="eyebrow">URUGENDO RWAWE, BYOROSHYE</p><h1>Shaka moto.<br><span>Wegerejwe.</span></h1><p class="intro">Motari ihuza abamotari n'abagenzi bari hafi yawe ukoresheje ikarita.</p>
+<div class="role-switch" role="group" aria-label="Hitamo uko ukoresha"><button class="role active" data-role="passenger">Ndi umugenzi</button><button class="role" data-role="rider">Ndi umumotari</button></div></section>
+<section class="panel"><div class="panel-heading"><div><h2 id="actionTitle">Shaka umumotari uri hafi</h2><p id="actionDesc">Emera location kugira ngo tubone aho uri.</p></div><span class="pin">⌖</span></div>
+<button id="locationBtn" class="primary">📍 Koresha aho ndi</button><p id="locationStatus" class="notice" aria-live="polite">Location ntirakoreshwa. Kanda buto iri hejuru.</p>
+<div id="map" aria-label="Ikarita y'aho uherereye"></div><div class="map-legend"><span><b class="dot you"></b> Aho ndi</span><span><b class="dot other"></b> Umumotari / umugenzi</span></div></section>
+<section class="panel request-panel"><h2 id="requestTitle">Saba moto</h2><p id="requestDesc">Ohereza ubusabe ku mumotari uri hafi nyuma yo guhuza backend.</p><label for="phone">Nimero ya telefoni</label><input id="phone" type="tel" placeholder="Urugero: 07XXXXXXXX" autocomplete="tel"><button id="requestBtn" class="primary">Ohereza ubusabe</button><p id="requestStatus" class="notice" aria-live="polite">Iyi ni prototype: ubusabe ntiburagera ku mumotari nyakuri.</p></section>
+<section class="features"><article><span>📍</span><h3>Live location</h3><p>Reba aho uri kuri GPS ya telefoni.</p></article><article><span>🛵</span><h3>Abari hafi</h3><p>Intego ni kubona abamotari n'abagenzi bari hafi.</p></article><article><span>🔒</span><h3>Umutekano</h3><p>Location igomba gusangizwa gusa igihe ubikeneye.</p></article></section>
+</main><footer>© <span id="year"></span> Motari · Prototype</footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script src="app.js"></script>
+<script>if("serviceWorker"in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(console.error));}</script>
+</body></html>
