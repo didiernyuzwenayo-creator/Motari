@@ -18,7 +18,7 @@ document.getElementById("locationBtn").addEventListener("click",()=>{
  locationStatus.classList.remove("error");locationStatus.textContent="Turimo gushaka aho uri... Emera uruhushya rwa location.";
  if(watchId!==null)navigator.geolocation.clearWatch(watchId);
  watchId=navigator.geolocation.watchPosition(position=>{
-  const {latitude,longitude,accuracy}=position.coords,point=[latitude,longitude];map.setView(point,16);
+  const {latitude,longitude,accuracy}=position.coords,point=[latitude,longitude];map.setView(point,16);showLocationName(latitude, longitude);
   if(!currentMarker)currentMarker=L.marker(point).addTo(map).bindPopup("Aho uri ubu");else currentMarker.setLatLng(point);
   if(accuracyCircle)accuracyCircle.remove();accuracyCircle=L.circle(point,{radius:accuracy,color:"#0f766e",fillOpacity:.08}).addTo(map);
   locationStatus.textContent=`Location yabonetse. GPS accuracy hafi ya ${Math.round(accuracy)} m. Iyi telefoni ni yo igaragara kuri iyi browser gusa kugeza backend ihujwe.`;
