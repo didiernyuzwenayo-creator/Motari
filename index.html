@@ -218,7 +218,7 @@
     const select = document.getElementById("languageSelect");
     if (select && select.value !== currentLanguage) select.value = currentLanguage;
     document.querySelectorAll("label, h2, h3, p, button, option, footer p").forEach(el => {
-      if (el.closest("#languageChooser")) return;
+      if (el.closest("#languageChooser") || el.id === "message") return;
       if (!el.dataset.rwText) el.dataset.rwText = el.textContent;
       const original = el.dataset.rwText;
       el.textContent = translateValue(original);
@@ -250,6 +250,8 @@
       else message("Wahisemo Ikinyarwanda.");
     });
     applyLanguage();
+    const languageObserver = new MutationObserver(() => applyLanguage());
+    languageObserver.observe(document.querySelector("main"), { childList: true, subtree: true });
   });
 
   const $ = id => document.getElementById(id);
