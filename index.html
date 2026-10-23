@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#087443">
   <title>MOTARI - Shaka Moto</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: Arial, sans-serif; background: #f3f6f4; color: #202820; }
@@ -78,6 +79,7 @@
   </section>
 
   <section id="appSection" class="card hidden">
+    <div class="card"><h2>📍 Ikarita ya MOTARI</h2><p>Emerera GPS kuri telefone kugira ngo urebe aho uri n’abamotari basangije aho bari.</p><div id="motariMap" style="height:300px;border-radius:10px"></div><p id="mapStatus">Ikarita iri gutegurwa...</p><button id="mapLocationButton" class="secondary" type="button">Erekana aho ndi ku ikarita</button></div>
     <h2>Konti yawe ya MOTARI</h2>
     <p id="welcome"></p>
     <p id="accountRole"></p>
@@ -104,6 +106,7 @@
 <footer><p>© 2026 MOTARI — Shaka moto, ugere iyo ujya.</p></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (() => {
   "use strict";
@@ -115,6 +118,8 @@
   let client = null;
   let currentUser = null;
   let currentProfile = null;
+  let motariMap = null;
+  let myMapMarker = null;
 
   function message(text) {
     $("message").textContent = String(text || "");
@@ -143,6 +148,26 @@
     $("appSection").classList.add("hidden");
   }
 
+  function initMotariMap() {
+    if (motariMap || !window.L) return;
+    motariMap = L.map("motariMap").setView([-1.9441, 30.0619], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" }).addTo(motariMap);
+    setTimeout(() => motariMap.invalidateSize(), 250);
+  }
+  function locateOnMap() {
+    initMotariMap();
+    if (!navigator.geolocation) { $("mapStatus").textContent = "GPS ntiyemewe kuri iyi browser."; return; }
+    $("mapStatus").textContent = "Turimo gushaka aho uherereye...";
+    navigator.geolocation.getCurrentPosition(pos => {
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      if (!motariMap) return;
+      if (myMapMarker) myMapMarker.setLatLng([lat, lon]);
+      else myMapMarker = L.marker([lat, lon]).addTo(motariMap).bindPopup("Aho uri");
+      motariMap.setView([lat, lon], 15);
+      $("location-name").textContent = "Aho uri: " + lat.toFixed(5) + ", " + lon.toFixed(5);
+      $("mapStatus").textContent = "Aho uri hagaragaye ku ikarita.";
+    }, () => { $("mapStatus").textContent = "Emera GPS kuri telefone, wongere ugerageze."; }, { enableHighAccuracy:true, timeout:15000, maximumAge:10000 });
+  }
   function showApp(profile) {
     $("authSection").classList.add("hidden");
     $("appSection").classList.remove("hidden");
@@ -153,6 +178,8 @@
 
     $("riderTools").classList.toggle("hidden", profile.role !== "rider");
     $("passengerTools").classList.toggle("hidden", profile.role !== "passenger");
+    initMotariMap();
+    locateOnMap();
   }
 
   async function ensureProfile(user) {
@@ -333,6 +360,8 @@
       setBusy("loginButton", false);
     }
   });
+
+  $("mapLocationButton").addEventListener("click", locateOnMap);
 
   $("locationButton").addEventListener("click", () => {
     if (!currentUser || !currentProfile || currentProfile.role !== "rider") {
