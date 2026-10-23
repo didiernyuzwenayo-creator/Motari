@@ -1,22 +1,32 @@
-# Motari — prototype ya PWA
+# MOTARI — Website ihuza abamotari n'abagenzi
 
-Iyi ni intangiriro ya website ya Motari. Ifite ikarita ya OpenStreetMap/Leaflet, guhitamo uruhare, na GPS ya telefoni.
+Website ya MOTARI iboneka kuri: https://didiernyuzwenayo-creator.github.io/Motari/
 
-## Icyo ikora ubu
-- Igaragaza ikarita.
-- Igerageza kubona GPS y'uwafunguye urubuga (ugomba kubanza kwemerera location).
-- Ishobora gushyirwa kuri telefoni nka PWA iyo iri kuri hosting ifite HTTPS.
+## Ibyakozwe
+- Kwiyandikisha no kwinjira ukoresheje Supabase Auth (email n'ijambo ry'ibanga).
+- Profili z'umugenzi n'umumotari.
+- Ikarita ya Leaflet/OpenStreetMap na GPS ya telefoni.
+- Umumotari ashobora gusangiza GPS ye igihe ari online; location ishaje irahishwa nyuma y'iminota 2.
+- Umugenzi ashobora kubona abamotari bari online n'aho bari.
+- Umugenzi ashobora gusaba moto, kureba ubusabe bwe no guhagarika ubusabe butaremerwa.
+- Umumotari ashobora kubona ubusabe bw'abagenzi, kubwemera no gushyira urugendo kuri rwarangiye.
+- Supabase Realtime kuri location n'ubusabe; website ivugurura amakuru buri masegonda 10 nk'uburyo bw'inyongera.
+- RLS policies zigena ko buri mukoresha abona amakuru yemerewe gusa.
+- Manifest na service worker byo gutuma website ishobora gushyirwa kuri home screen.
 
-## Icyo itarakora
-Iyi ni prototype, si serivisi yuzuye: GPS ya buri muntu ntirajya muri database, abamotari ntibaraboneka ku bandi, konti n'ubusabe ntibibikwa, kandi nta ride request nyakuri yoherezwa.
+## Icyitonderwa
+Ibi byakozwe kandi schema/policies byagenzuwe muri Supabase. Ariko ntitwashoboye gukora end-to-end test dukoresheje konti nyayo y'umugenzi n'iy'umumotari, GPS y'ibikoresho bibiri, no kwemeza email. Mbere yo gukoresha MOTARI mu kazi nyako, banza ugerageze ukoresheje konti ebyiri zitandukanye. GPS ikenera HTTPS n'uruhushya rwa browser. Supabase Publishable key iri muri frontend igenewe gukoreshwa ku ruhande rwa browser; ntushyire service-role/secret key muri code.
 
-## Kuyigerageza kuri telefoni
-1. Fungura iyi ZIP uyikuremo (Extract).
-2. Ohereza folder kuri GitHub ukoresheje browser ya telefoni, hanyuma uyishyire kuri hosting ifite HTTPS.
-3. Fungura link muri Chrome kandi wemere Location permission.
-4. Muri Chrome kanda menu `⋮` > `Add to Home screen` cyangwa `Install app` niba bigaragara.
+## Uko wayigerageza
+1. Fungura website kuri Chrome.
+2. Iyandikishe nka **Umumotari** ukoresheje email yawe.
+3. Emera GPS hanyuma ukande **Sangiza MOTARI aho ndi**.
+4. Ku yindi telefoni cyangwa browser, iyandikishe nka **Umugenzi**.
+5. Emera GPS; reba niba pin y'umumotari igaragara.
+6. Saba moto, hanyuma kuri konti y'umumotari urebe ubusabe, ubyemere.
+7. Nyuma y'urugendo, umumotari akande **Shyira urugendo kuri rwarangiye**.
 
-## Intambwe ikurikira
-Huza Firebase Authentication na Firebase Realtime Database kugira ngo konti, online status, GPS updates n'ubusabe bigere ku bandi mu gihe nyacyo. Shyiraho amategeko y'umutekano, kugenzura abamotari, no guhagarika gusangiza location igihe user agiye offline cyangwa urugendo rurangiye.
-
-GPS ikenera uruhushya kandi akenshi HTTPS. Ntugashyire passwords cyangwa secrets muri code rusange. Ikarita ikoresha OpenStreetMap tiles na Leaflet iboneka kuri internet.
+## Iby'ingenzi
+- Abamotari n'abagenzi bagomba gukoresha konti zitandukanye.
+- Umumotari agomba kuguma afunguye kuri website kandi GPS ikora kugira ngo akomeze kugaragara online.
+- Ikarita n'ubutumwa bya Supabase bisaba internet.
