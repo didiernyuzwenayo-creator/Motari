@@ -120,6 +120,12 @@
   let currentProfile = null;
   let motariMap = null;
   let myMapMarker = null;
+  let riderWatchId = null;
+  let riderPersistedAt = 0;
+  let riderIsOnline = false;
+  let otherRiderMarkers = new Map();
+  let liveRefreshTimer = null;
+  let realtimeChannel = null;
 
   function message(text) {
     $("message").textContent = String(text || "");
@@ -236,55 +242,154 @@
     return data;
   }
 
+  async function loadRiderLocations() {
+    if (!currentUser || !currentProfile || !motariMap) return;
+    if (currentProfile.role !== "passenger") return;
+    const { data, error } = await client
+      .from("rider_locations")
+      .select("rider_id, latitude, longitude, updated_at, is_online")
+      .eq("is_online", true)
+      .gte("updated_at", new Date(Date.now() - 120000).toISOString())
+      .limit(100);
+    if (error) {
+      console.warn("MOTARI rider locations:", error.message);
+      return;
+    }
+    const visibleIds = new Set();
+    (data || []).forEach(rider => {
+      if (!Number.isFinite(Number(rider.latitude)) || !Number.isFinite(Number(rider.longitude))) return;
+      visibleIds.add(rider.rider_id);
+      const point = [Number(rider.latitude), Number(rider.longitude)];
+      let marker = otherRiderMarkers.get(rider.rider_id);
+      if (!marker) {
+        marker = L.marker(point).addTo(motariMap).bindPopup("Umumotari uri hafi kandi online");
+        otherRiderMarkers.set(rider.rider_id, marker);
+      } else {
+        marker.setLatLng(point);
+      }
+    });
+    for (const [id, marker] of otherRiderMarkers.entries()) {
+      if (!visibleIds.has(id)) {
+        motariMap.removeLayer(marker);
+        otherRiderMarkers.delete(id);
+      }
+    }
+  }
+
   async function loadRequests() {
     if (!currentUser || !currentProfile) return;
-
     const box = $("requests");
     box.replaceChildren();
-
     const title = document.createElement("h3");
     title.textContent = currentProfile.role === "passenger"
       ? "Ibyifuzo by'ingendo zawe"
-      : "Ibyifuzo by'ingendo";
+      : "Ibyifuzo by'abagenzi";
     box.appendChild(title);
 
-    if (currentProfile.role === "rider") {
-      const note = document.createElement("p");
-      note.textContent =
-        "Konti y'umumotari irakora. Kugaragaza abagenzi bari hafi bisaba ko hategurwa uburyo bwo guhuza ibyifuzo n'aho abamotari bari.";
-      box.appendChild(note);
-      return;
-    }
-
-    const { data, error } = await client
-      .from("ride_requests")
-      .select("id, destination, status, created_at")
-      .eq("passenger_id", currentUser.id)
+    const query = client.from("ride_requests")
+      .select("id, passenger_id, rider_id, destination, status, created_at")
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(30);
+    const { data, error } = currentProfile.role === "passenger"
+      ? await query.eq("passenger_id", currentUser.id)
+      : await query.or("status.eq.pending,rider_id.eq." + currentUser.id);
 
     if (error) {
-      console.error(error);
+      console.error("MOTARI requests:", error);
       const p = document.createElement("p");
-      p.textContent = "Ntitwabashije kubona ibyifuzo. Reba permissions/RLS za ride_requests muri Supabase.";
+      p.textContent = "Ntitwabashije kubona ibyifuzo. Ongera ugerageze.";
       box.appendChild(p);
       return;
     }
-
     if (!data || data.length === 0) {
       const empty = document.createElement("p");
-      empty.textContent = "Nta cyifuzo urasaba.";
+      empty.textContent = currentProfile.role === "rider"
+        ? "Nta busabe bw'abagenzi buraboneka. Komeza kuba online kugira ngo ubone ubusabe bushya."
+        : "Nta cyifuzo urasaba.";
       box.appendChild(empty);
       return;
     }
-
     data.forEach(item => {
-      const row = document.createElement("p");
-      row.textContent =
-        "Aho ujya: " + (item.destination || "Ntabwo hazwi") +
-        " — Status: " + (item.status || "ntiramenyekana");
+      const row = document.createElement("div");
+      row.style.cssText = "padding:12px;margin:10px 0;background:#f5f7f5;border-radius:9px";
+      const details = document.createElement("p");
+      details.textContent = "Aho ajya: " + (item.destination || "Ntabwo hazwi") +
+        " — " + ({pending:"Birategereje umumotari",accepted:"Umumotari yemeye urugendo",completed:"Urugendo rwarangiye",cancelled:"Urugendo rwahagaritswe"}[item.status] || item.status);
+      row.appendChild(details);
+      if (currentProfile.role === "rider" && item.status === "pending" && !item.rider_id) {
+        const accept = document.createElement("button");
+        accept.type = "button";
+        accept.textContent = "Emera uru rugendo";
+        accept.addEventListener("click", async () => {
+          accept.disabled = true;
+          const { error: updateError } = await client.from("ride_requests")
+            .update({ rider_id: currentUser.id, status: "accepted" })
+            .eq("id", item.id).eq("status", "pending").is("rider_id", null);
+          if (updateError) {
+            message("Ntibyashobotse kwemera urugendo: " + updateError.message);
+            accept.disabled = false;
+          } else {
+            message("Wemeye urugendo. Hamagara umugenzi ukoresheje amakuru mwumvikanyeho.");
+            await loadRequests();
+          }
+        });
+        row.appendChild(accept);
+      }
+      if (currentProfile.role === "rider" && item.status === "accepted" && item.rider_id === currentUser.id) {
+        const complete = document.createElement("button");
+        complete.type = "button";
+        complete.className = "secondary";
+        complete.textContent = "Shyira urugendo kuri rwarangiye";
+        complete.addEventListener("click", async () => {
+          complete.disabled = true;
+          const { error: updateError } = await client.from("ride_requests")
+            .update({ status: "completed" }).eq("id", item.id).eq("rider_id", currentUser.id);
+          if (updateError) {
+            message("Ntibyashobotse kurangiza urugendo: " + updateError.message);
+            complete.disabled = false;
+          } else {
+            message("Urugendo rwanditswe ko rwarangiye.");
+            await loadRequests();
+          }
+        });
+        row.appendChild(complete);
+      }
+      if (currentProfile.role === "passenger" && item.status === "pending") {
+        const cancel = document.createElement("button");
+        cancel.type = "button";
+        cancel.className = "secondary";
+        cancel.textContent = "Hagarika ubusabe";
+        cancel.addEventListener("click", async () => {
+          cancel.disabled = true;
+          const { error: updateError } = await client.from("ride_requests")
+            .update({ status: "cancelled" }).eq("id", item.id).eq("passenger_id", currentUser.id);
+          if (updateError) {
+            message("Ntibyashobotse guhagarika ubusabe: " + updateError.message);
+            cancel.disabled = false;
+          } else {
+            message("Ubusabe bwahagaritswe.");
+            await loadRequests();
+          }
+        });
+        row.appendChild(cancel);
+      }
       box.appendChild(row);
     });
+  }
+
+  function startLiveUpdates() {
+    if (liveRefreshTimer) clearInterval(liveRefreshTimer);
+    if (realtimeChannel) client.removeChannel(realtimeChannel);
+    loadRequests();
+    loadRiderLocations();
+    liveRefreshTimer = setInterval(() => {
+      loadRequests();
+      loadRiderLocations();
+    }, 10000);
+    realtimeChannel = client.channel("motari-live-" + currentUser.id)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ride_requests" }, () => loadRequests())
+      .on("postgres_changes", { event: "*", schema: "public", table: "rider_locations" }, () => loadRiderLocations())
+      .subscribe();
   }
 
   async function openApp(user) {
@@ -295,7 +400,7 @@
       const profile = await ensureProfile(user);
       showApp(profile);
       message("Winjiye muri MOTARI neza.");
-      await loadRequests();
+      startLiveUpdates();
     } catch (error) {
       showAuth();
       showError(error);
@@ -368,43 +473,57 @@
       message("Injira muri konti y'umumotari kugira ngo usangize aho uherereye.");
       return;
     }
-
     if (!navigator.geolocation) {
       message("Browser ya telefone yawe ntiyemera GPS.");
       return;
     }
-
-    message("Turimo gushaka aho uherereye. Emerera browser gukoresha GPS.");
-
-    navigator.geolocation.getCurrentPosition(async position => {
-      try {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-
-        const { error } = await client.from("rider_locations").upsert({
-          rider_id: currentUser.id,
-          latitude,
-          longitude,
-          updated_at: new Date().toISOString()
-        }, { onConflict: "rider_id" });
-
-        if (error) throw error;
-
-        $("location-name").textContent =
-          "Aho uherereye: " + latitude.toFixed(5) + ", " + longitude.toFixed(5);
-
-        message("Aho uherereye habitswe neza. Kanda nanone kugira ngo uvugurure GPS.");
-      } catch (error) {
-        showError(error);
+    if (riderWatchId !== null) {
+      navigator.geolocation.clearWatch(riderWatchId);
+      riderWatchId = null;
+      riderIsOnline = false;
+      client.from("rider_locations").update({ is_online: false, updated_at: new Date().toISOString() })
+        .eq("rider_id", currentUser.id).then(({ error }) => {
+          if (error) console.warn("Could not mark rider offline:", error.message);
+          message("Wahagaritse gusangiza GPS. Ntukigaragara nk'umumotari uri online.");
+          $("locationButton").textContent = "Sangiza MOTARI aho ndi";
+        });
+      return;
+    }
+    message("Turimo gutangira gusangiza GPS yawe. Emerera browser gukoresha location.");
+    $("locationButton").textContent = "Hagarika gusangiza GPS";
+    riderWatchId = navigator.geolocation.watchPosition(async position => {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      const point = [latitude, longitude];
+      if (motariMap) {
+        if (myMapMarker) myMapMarker.setLatLng(point);
+        else myMapMarker = L.marker(point).addTo(motariMap).bindPopup("Aho uri");
+        motariMap.setView(point, 15);
+      }
+      $("location-name").textContent = "Aho uherereye: " + latitude.toFixed(5) + ", " + longitude.toFixed(5);
+      riderIsOnline = true;
+      const now = Date.now();
+      if (now - riderPersistedAt < 10000) return;
+      riderPersistedAt = now;
+      const { error } = await client.from("rider_locations").upsert({
+        rider_id: currentUser.id, latitude, longitude,
+        updated_at: new Date().toISOString(), is_online: true
+      }, { onConflict: "rider_id" });
+      if (error) {
+        console.error("MOTARI location save:", error);
+        message("GPS yabonetse ariko ntiyabitswe: " + error.message);
+      } else {
+        message("GPS yawe irimo gusangizwa MOTARI. Komeza gufungura uru rubuga kugira ngo ugume online.");
       }
     }, error => {
       console.error("GPS error:", error);
-      message("Ntabwo tubonye aho uherereye. Fungura GPS kuri telefone kandi wemere browser kuyikoresha.");
-    }, {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 10000
-    });
+      message(error.code === 1
+        ? "Wanze GPS. Emerera Chrome gukoresha location."
+        : "GPS ntiyabonetse. Reba niba GPS ifunguye wongere ugerageze.");
+      if (riderWatchId !== null) navigator.geolocation.clearWatch(riderWatchId);
+      riderWatchId = null;
+      $("locationButton").textContent = "Sangiza MOTARI aho ndi";
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 });
   });
 
   $("requestButton").addEventListener("click", () => {
@@ -440,7 +559,7 @@
 
         if (error) throw error;
 
-        message("Icyifuzo cyawe cyoherejwe neza.");
+        message("Icyifuzo cyawe cyoherejwe neza. Abamotari bari online bashobora kukibona.");
         await loadRequests();
       } catch (error) {
         showError(error);
@@ -466,11 +585,24 @@
 
   $("logoutButton").addEventListener("click", async () => {
     try {
+      if (riderWatchId !== null) {
+        navigator.geolocation.clearWatch(riderWatchId);
+        riderWatchId = null;
+      }
+      if (currentUser && currentProfile?.role === "rider") {
+        await client.from("rider_locations").update({ is_online: false, updated_at: new Date().toISOString() })
+          .eq("rider_id", currentUser.id);
+      }
+      if (liveRefreshTimer) clearInterval(liveRefreshTimer);
+      liveRefreshTimer = null;
+      if (realtimeChannel) await client.removeChannel(realtimeChannel);
+      realtimeChannel = null;
       const { error } = await client.auth.signOut();
       if (error) throw error;
 
       currentUser = null;
       currentProfile = null;
+      riderIsOnline = false;
       $("requests").replaceChildren();
       showAuth();
       message("Wasohotse muri konti.");
