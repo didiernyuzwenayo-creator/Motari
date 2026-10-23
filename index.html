@@ -559,13 +559,14 @@
 
   async function start() {
     if (
-      SUPABASE_URL === "https://yuonilzfapyjqxsbcupf.supabase.co";
-      SUPABASE_KEY === "sb_publishable_hvDGt8Ku4x5ACNe0XlmXVg_izQUH5YF"
-    ) {
-      message(
-        "Website irateguwe. Hasigaye gushyiramo Project URL na Publishable key."
-      );
-      return;
+  !SUPABASE_URL ||
+  !SUPABASE_KEY ||
+  SUPABASE_URL.includes("YOUR_PROJECT_URL") ||
+  SUPABASE_KEY.includes("YOUR_SUPABASE_KEY")
+) {
+  message("Banza ushyiremo Supabase Project URL na Publishable key.");
+  return;
+    }
     }
 
     try {
