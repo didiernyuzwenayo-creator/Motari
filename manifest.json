@@ -1,1 +1,11 @@
-{"name":"Motari","short_name":"Motari","description":"Ihuza abamotari n'abagenzi mu Rwanda.","start_url":"./","scope":"./","display":"standalone","background_color":"#f4f8f7","theme_color":"#0f766e","icons":[]}
+{
+  "name": "Motari",
+  "short_name": "Motari",
+  "description": "Ihuza abamotari n'abagenzi mu Rwanda.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f4",
+  "theme_color": "#087443",
+  "icons": []
+}\n
