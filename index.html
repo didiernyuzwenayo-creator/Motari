@@ -43,7 +43,8 @@
       <option value="en">🇬🇧 English</option>
     </select>
   </div>
-\n<main>
+
+<main>
   <div class="card">
     <h2>Murakaza neza kuri MOTARI</h2>
     <p>Shaka moto cyangwa wiyandikishe nk'umumotari. Tangira ukoresheje konti yawe.</p>
@@ -250,7 +251,8 @@
     });
     applyLanguage();
   });
-\n  const $ = id => document.getElementById(id);
+
+  const $ = id => document.getElementById(id);
   let client = null;
   let currentUser = null;
   let currentProfile = null;
@@ -266,7 +268,7 @@
   let myLongitude = null;
 
   function message(text) {
-    $("message").textContent = String(text || "");
+    $("message").textContent = translateValue(String(text || ""));
   }
 
   function showError(error) {
