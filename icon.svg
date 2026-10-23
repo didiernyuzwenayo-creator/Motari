@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#087443"/>
+  <circle cx="135" cy="365" r="58" fill="none" stroke="#ffffff" stroke-width="26"/>
+  <circle cx="378" cy="365" r="58" fill="none" stroke="#ffffff" stroke-width="26"/>
+  <path d="M135 365 L204 250 L275 365 L213 365 L281 250 L337 250 L378 365 M228 250 L190 205 L245 205" fill="none" stroke="#ffffff" stroke-width="27" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M255 130 L287 165 L255 200 L223 165 Z" fill="#f5c542"/>
+  <text x="256" y="100" font-family="Arial,sans-serif" font-size="48" font-weight="800" text-anchor="middle" fill="#ffffff">MOTARI</text>
+</svg>
