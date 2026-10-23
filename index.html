@@ -221,7 +221,8 @@
       if (el.closest("#languageChooser") || el.id === "message") return;
       if (!el.dataset.rwText) el.dataset.rwText = el.textContent;
       const original = el.dataset.rwText;
-      el.textContent = translateValue(original);
+      const translated = translateValue(original);
+      if (el.textContent !== translated) el.textContent = translated;
     });
     document.querySelectorAll("input[placeholder]").forEach(el => {
       if (!el.dataset.rwPlaceholder) el.dataset.rwPlaceholder = el.placeholder;
