@@ -99,6 +99,7 @@
     </div>
 
     <button id="refreshButton" class="secondary">Reba ibyifuzo byanjye</button>
+    <div class="card"><h2 id="nearbyTitle">Abantu bakwegereye</h2><p id="nearbyStatus">Tegereza gato...</p><div id="nearbyContacts"></div></div>
     <div id="requests"></div>
     <button id="logoutButton" class="secondary">Sohoka muri konti</button>
   </section>
@@ -127,6 +128,8 @@
   let otherRiderMarkers = new Map();
   let liveRefreshTimer = null;
   let realtimeChannel = null;
+  let myLatitude = null;
+  let myLongitude = null;
 
   function message(text) {
     $("message").textContent = String(text || "");
@@ -167,6 +170,7 @@
     $("mapStatus").textContent = "Turimo gushaka aho uherereye...";
     navigator.geolocation.getCurrentPosition(pos => {
       const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      myLatitude = lat; myLongitude = lon;
       if (!motariMap) return;
       if (myMapMarker) myMapMarker.setLatLng([lat, lon]);
       else myMapMarker = L.marker([lat, lon]).addTo(motariMap).bindPopup("Aho uri");
@@ -277,6 +281,58 @@
     }
   }
 
+  function distanceKm(lat1, lon1, lat2, lon2) {
+    const rad = value => value * Math.PI / 180;
+    const dLat = rad(lat2-lat1), dLon = rad(lon2-lon1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(rad(lat1))*Math.cos(rad(lat2))*Math.sin(dLon/2)**2;
+    return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+  function addContactCard(container, profile, distance, description) {
+    const card=document.createElement("div");
+    card.style.cssText="padding:12px;margin:8px 0;border:1px solid #d9e4df;border-radius:10px";
+    const name=document.createElement("strong");
+    name.textContent=profile.full_name || (profile.role==="rider"?"Umumotari":"Umugenzi");
+    card.appendChild(name);
+    const detail=document.createElement("p");
+    detail.textContent=description+(Number.isFinite(distance)?" • "+distance.toFixed(1)+" km":"");
+    card.appendChild(detail);
+    if(profile.phone) {
+      const phone=document.createElement("p"); phone.textContent="Telefone: "+profile.phone; card.appendChild(phone);
+      const call=document.createElement("a"); call.href="tel:"+profile.phone.replace(/[^+0-9]/g,"");
+      call.textContent="Hamagara"; call.style.cssText="display:inline-block;padding:8px 12px;background:#087443;color:white;border-radius:7px;text-decoration:none"; card.appendChild(call);
+    } else { const no=document.createElement("p"); no.textContent="Nta nimero ya telefone yashyizwe kuri konti."; card.appendChild(no); }
+    container.appendChild(card);
+  }
+  async function loadNearbyContacts() {
+    if(!currentUser || !currentProfile) return;
+    const box=$("nearbyContacts"); if(!box) return; box.replaceChildren();
+    const passenger=currentProfile.role==="passenger";
+    $("nearbyTitle").textContent=passenger?"Abamotari bakwegereye":"Abagenzi bakwegereye";
+    $("nearbyStatus").textContent="Turimo gushaka abantu bakwegereye...";
+    if(passenger) {
+      const {data:locations,error}=await client.from("rider_locations").select("rider_id,latitude,longitude,updated_at,is_online").eq("is_online",true).gte("updated_at",new Date(Date.now()-120000).toISOString()).limit(100);
+      if(error){$("nearbyStatus").textContent="Ikosa mu gushaka abamotari: "+error.message;return;}
+      if(!locations?.length){$("nearbyStatus").textContent="Nta mumotari uri online ugaragara ubu.";return;}
+      const {data:profiles,error:pe}=await client.from("profiles").select("id,full_name,phone,role").in("id",locations.map(x=>x.rider_id)).eq("role","rider");
+      if(pe){$("nearbyStatus").textContent="Ntitwashoboye kubona nimero z'abamotari: "+pe.message;return;}
+      const byId=new Map((profiles||[]).map(x=>[x.id,x]));
+      const list=locations.map(loc=>{const profile=byId.get(loc.rider_id);if(!profile)return null;return {profile,distance:myLatitude==null?Infinity:distanceKm(myLatitude,myLongitude,+loc.latitude,+loc.longitude)}}).filter(Boolean).sort((a,b)=>a.distance-b.distance);
+      list.forEach(x=>addContactCard(box,x.profile,x.distance,"Umumotari uri online"));
+      $("nearbyStatus").textContent=list.length?"Urutonde rw'abamotari bari online, uhereye ku wegereye.":"Nta mumotari wabonetse.";
+    } else {
+      const {data:requests,error}=await client.from("ride_requests").select("id,passenger_id,pickup_latitude,pickup_longitude,destination,created_at").eq("status","pending").is("rider_id",null).gte("created_at",new Date(Date.now()-30*60000).toISOString()).limit(100);
+      if(error){$("nearbyStatus").textContent="Ikosa mu gushaka abagenzi: "+error.message;return;}
+      if(!requests?.length){$("nearbyStatus").textContent="Nta mugenzi ufite ubusabe bushya butaremerwa ugaragara ubu.";return;}
+      const ids=[...new Set(requests.map(x=>x.passenger_id))];
+      const {data:profiles,error:pe}=await client.from("profiles").select("id,full_name,phone,role").in("id",ids).eq("role","passenger");
+      if(pe){$("nearbyStatus").textContent="Ubusabe burahari ariko nimero z'abagenzi ntizafungutse: "+pe.message;return;}
+      const byId=new Map((profiles||[]).map(x=>[x.id,x]));
+      const list=requests.map(req=>{const profile=byId.get(req.passenger_id);if(!profile)return null;return {profile,req,distance:myLatitude==null?Infinity:distanceKm(myLatitude,myLongitude,+req.pickup_latitude,+req.pickup_longitude)}}).filter(Boolean).sort((a,b)=>a.distance-b.distance);
+      list.forEach(x=>addContactCard(box,x.profile,x.distance,"Aho agiye: "+(x.req.destination||"Ntabwo hazwi")+" • Arasaba moto"));
+      $("nearbyStatus").textContent=list.length?"Abagenzi bafite ubusabe butaremerwa, uhereye ku wegereye.":"Nta mugenzi wabonetse.";
+    }
+  }
+
   async function loadRequests() {
     if (!currentUser || !currentProfile) return;
     const box = $("requests");
@@ -383,13 +439,16 @@
     if (realtimeChannel) client.removeChannel(realtimeChannel);
     loadRequests();
     loadRiderLocations();
+    loadNearbyContacts();
     liveRefreshTimer = setInterval(() => {
       loadRequests();
       loadRiderLocations();
+      loadNearbyContacts();
     }, 10000);
     realtimeChannel = client.channel("motari-live-" + currentUser.id)
       .on("postgres_changes", { event: "*", schema: "public", table: "ride_requests" }, () => loadRequests())
-      .on("postgres_changes", { event: "*", schema: "public", table: "rider_locations" }, () => loadRiderLocations())
+      .on("postgres_changes", { event: "*", schema: "public", table: "rider_locations" }, () => { loadRiderLocations(); loadNearbyContacts(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => loadNearbyContacts())
       .subscribe();
   }
 
@@ -495,6 +554,7 @@
     riderWatchId = navigator.geolocation.watchPosition(async position => {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
+      myLatitude = latitude; myLongitude = longitude;
       const point = [latitude, longitude];
       if (motariMap) {
         if (myMapMarker) myMapMarker.setLatLng(point);
