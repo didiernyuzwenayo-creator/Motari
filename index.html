@@ -3,112 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  <meta name="theme-color" content="#087443">
   <title>MOTARI - Shaka Moto</title>
-
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #f3f6f4;
-      color: #202820;
-    }
-
-    header {
-      background: #087443;
-      color: white;
-      text-align: center;
-      padding: 22px 12px;
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 32px;
-    }
-
-    header p {
-      margin-bottom: 0;
-    }
-
-    main {
-      max-width: 520px;
-      margin: 20px auto;
-      padding: 15px;
-    }
-
-    .card {
-      background: white;
-      padding: 20px;
-      margin-bottom: 18px;
-      border-radius: 12px;
-      box-shadow: 0 2px 9px #00000012;
-    }
-
-    h2 {
-      color: #087443;
-      margin-top: 0;
-    }
-
-    label {
-      display: block;
-      margin-top: 12px;
-      font-weight: bold;
-    }
-
-    input, select, button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 7px;
-      border-radius: 7px;
-      font-size: 16px;
-    }
-
-    input, select {
-      border: 1px solid #ccc;
-      background: white;
-    }
-
-    button {
-      border: none;
-      background: #087443;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:disabled {
-      opacity: 0.6;
-    }
-
-    .secondary {
-      background: #e8f3ec;
-      color: #075c36;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    #message {
-      padding: 12px;
-      border-radius: 8px;
-      overflow-wrap: anywhere;
-    }
-
-    footer {
-      text-align: center;
-      padding: 20px;
-      color: #555;
-    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f3f6f4; color: #202820; }
+    header { background: #087443; color: white; text-align: center; padding: 22px 12px; }
+    header h1 { margin: 0; font-size: 32px; }
+    header p { margin: 8px 0 0; }
+    main { max-width: 560px; margin: 20px auto; padding: 0 15px; }
+    .card { background: white; padding: 20px; margin-bottom: 18px; border-radius: 12px; box-shadow: 0 2px 9px #00000012; }
+    h2 { color: #087443; margin-top: 0; }
+    label { display: block; margin-top: 12px; font-weight: bold; }
+    input, select, button { width: 100%; padding: 12px; margin-top: 7px; border-radius: 7px; font-size: 16px; }
+    input, select { border: 1px solid #ccc; background: white; }
+    button { border: none; background: #087443; color: white; font-weight: bold; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .secondary { background: #e8f3ec; color: #075c36; }
+    .hidden { display: none !important; }
+    #message { padding: 12px; border-radius: 8px; overflow-wrap: anywhere; background: #edf7f0; }
+    #requests p { padding: 10px; background: #f5f7f5; border-radius: 7px; overflow-wrap: anywhere; }
+    footer { text-align: center; padding: 20px; color: #555; }
   </style>
 </head>
-
 <body>
-
 <header>
   <h1>🏍️ MOTARI</h1>
   <p id="location-name">Turimo kumenya aho uherereye...</p>
@@ -116,32 +34,20 @@
 </header>
 
 <main>
-
   <div class="card">
     <h2>Murakaza neza kuri MOTARI</h2>
-    <p>
-      Shaka moto cyangwa wiyandikishe nk'umumotari.
-      Tangira ukoresheje konti yawe.
-    </p>
-    <p id="message">Tegereza gato...</p>
+    <p>Shaka moto cyangwa wiyandikishe nk'umumotari. Tangira ukoresheje konti yawe.</p>
+    <p id="message" role="status" aria-live="polite">Tegereza gato...</p>
   </div>
-<section id="authSection" class="card" style="display:block !important; visibility:visible !important; opacity:1 !important;">
-  
 
+  <section id="authSection" class="card">
     <h2>Fungura konti</h2>
-
     <form id="signupForm">
-
       <label for="fullName">Amazina yawe</label>
-      <input id="fullName" required
-             autocomplete="name"
-             placeholder="Andika amazina yawe">
+      <input id="fullName" required autocomplete="name" placeholder="Andika amazina yawe">
 
       <label for="phone">Numero ya telefone</label>
-      <input id="phone" required
-             type="tel"
-             autocomplete="tel"
-             placeholder="Urugero: 07XXXXXXXX">
+      <input id="phone" required type="tel" autocomplete="tel" placeholder="Urugero: 07XXXXXXXX">
 
       <label for="role">Hitamo ubwoko bwa konti</label>
       <select id="role" required>
@@ -150,143 +56,135 @@
       </select>
 
       <label for="signupEmail">Email</label>
-      <input id="signupEmail" type="email"
-             autocomplete="email" required
-             placeholder="Email yawe">
+      <input id="signupEmail" type="email" autocomplete="email" required placeholder="Email yawe">
 
       <label for="signupPassword">Ijambo ry'ibanga</label>
-      <input id="signupPassword" type="password"
-             autocomplete="new-password"
-             minlength="8" required
-             placeholder="Nibura inyuguti 8">
+      <input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="Nibura inyuguti 8">
 
-      <button type="submit">Iyandikishe</button>
-
+      <button id="signupButton" type="submit">Iyandikishe</button>
     </form>
 
     <hr>
-
     <h2>Usanzwe ufite konti?</h2>
-
     <form id="loginForm">
-
       <label for="loginEmail">Email</label>
-      <input id="loginEmail" type="email"
-             autocomplete="email" required>
+      <input id="loginEmail" type="email" autocomplete="email" required>
 
       <label for="loginPassword">Ijambo ry'ibanga</label>
-      <input id="loginPassword" type="password"
-             autocomplete="current-password" required>
+      <input id="loginPassword" type="password" autocomplete="current-password" required>
 
-      <button type="submit">Injira</button>
-
+      <button id="loginButton" type="submit">Injira</button>
     </form>
-
   </section>
 
   <section id="appSection" class="card hidden">
-
     <h2>Konti yawe ya MOTARI</h2>
-
     <p id="welcome"></p>
     <p id="accountRole"></p>
 
     <div id="riderTools" class="hidden">
       <h2>🏍️ Umumotari</h2>
-
-      <p>
-        Kanda hano kugira ngo wemere ko telefone yawe
-        itanga aho uherereye.
-      </p>
-
-      <button id="locationButton">
-        Sangiza MOTARI aho ndi
-      </button>
+      <p>Sangiza MOTARI aho uherereye kugira ngo ubashe kuvugurura aho uri.</p>
+      <button id="locationButton">Sangiza MOTARI aho ndi</button>
     </div>
 
     <div id="passengerTools" class="hidden">
       <h2>🚕 Saba moto</h2>
-
-      <label for="destination">
-        Aho ushaka kujya
-      </label>
-
-      <input id="destination"
-             placeholder="Urugero: Kigali Convention Centre">
-
-      <button id="requestButton">
-        Saba moto
-      </button>
+      <label for="destination">Aho ushaka kujya</label>
+      <input id="destination" placeholder="Urugero: Kigali Convention Centre">
+      <button id="requestButton">Saba moto</button>
     </div>
 
-    <button id="refreshButton" class="secondary">
-      Reba ibyifuzo byanjye
-    </button>
-
+    <button id="refreshButton" class="secondary">Reba ibyifuzo byanjye</button>
     <div id="requests"></div>
-
-    <button id="logoutButton" class="secondary">
-      Sohoka muri konti
-    </button>
-
+    <button id="logoutButton" class="secondary">Sohoka muri konti</button>
   </section>
-
 </main>
 
-<footer>
-  <p>© 2026 MOTARI — Shaka moto, ugere iyo ujya.</p>
-</footer>
+<footer><p>© 2026 MOTARI — Shaka moto, ugere iyo ujya.</p></footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
-  // SHYIRAMO AMAKURU YAWE YA SUPABASE HANO
-  const SUPABASE_URL = "https://yuonilzfapyjqxsbcupf.supabase.co"; const SUPABASE_KEY = "sb_publishable_hvDGt8Ku4x5ACNe0XlmXVg_izQUH5YF";
+(() => {
+  "use strict";
 
-  const client = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
+  const SUPABASE_URL = "https://yuonilzfapyjqxsbcupf.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_hvDGt8Ku4x5ACNe0XlmXVg_izQUH5YF";
 
   const $ = id => document.getElementById(id);
-
+  let client = null;
   let currentUser = null;
   let currentProfile = null;
-  let currentPosition = null;
 
   function message(text) {
-    $("message").textContent = text;
+    $("message").textContent = String(text || "");
   }
 
   function showError(error) {
-    console.error(error);
-    message(error.message || "Habaye ikibazo. Ongera ugerageze.");
+    console.error("MOTARI error:", error);
+    message("Ikosa: " + (error?.message || "Habaye ikibazo. Ongera ugerageze."));
+  }
+
+  function setBusy(id, busy, busyText) {
+    const button = $(id);
+    if (!button) return;
+    if (busy) {
+      button.dataset.originalText = button.textContent;
+      button.textContent = busyText || "Tegereza...";
+      button.disabled = true;
+    } else {
+      button.textContent = button.dataset.originalText || button.textContent;
+      button.disabled = false;
+    }
+  }
+
+  function showAuth() {
+    $("authSection").classList.remove("hidden");
+    $("appSection").classList.add("hidden");
+  }
+
+  function showApp(profile) {
+    $("authSection").classList.add("hidden");
+    $("appSection").classList.remove("hidden");
+
+    $("welcome").textContent = "Muraho, " + (profile.full_name || "umukoresha wa MOTARI") + "!";
+    $("accountRole").textContent =
+      profile.role === "rider" ? "Konti y'umumotari" : "Konti y'umugenzi";
+
+    $("riderTools").classList.toggle("hidden", profile.role !== "rider");
+    $("passengerTools").classList.toggle("hidden", profile.role !== "passenger");
   }
 
   async function ensureProfile(user) {
     const { data: profile, error } = await client
       .from("profiles")
-      .select("*")
+      .select("id, full_name, phone, role")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (error) throw error;
+    if (error) {
+      throw new Error(
+        "Ntitwashoboye gusoma amakuru ya konti muri profiles. Reba RLS/permissions za Supabase. " +
+        error.message
+      );
+    }
 
     if (profile) {
+      if (!profile.role || !["rider", "passenger"].includes(profile.role)) {
+        throw new Error("Ubwoko bwa konti muri profiles ntibwemewe. Koresha rider cyangwa passenger.");
+      }
+
       currentProfile = profile;
       return profile;
     }
 
     const metadata = user.user_metadata || {};
-
     const fullName = metadata.full_name || "";
     const phone = metadata.phone || "";
     const role = metadata.role || "";
 
     if (!fullName || !role) {
-      throw new Error(
-        "Amakuru ya konti ntiyuzuye. Ongera wiyandikishe cyangwa saba ubufasha."
-      );
+      throw new Error("Konti yawe ntifite amakuru yuzuye muri profiles. Saba ubufasha.");
     }
 
     const { data, error: insertError } = await client
@@ -295,54 +193,91 @@
         id: user.id,
         full_name: fullName,
         phone: phone || null,
-        role: role
+        role
       })
-      .select()
+      .select("id, full_name, phone, role")
       .single();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      throw new Error(
+        "Ntitwashoboye gukora amakuru ya konti muri profiles. Reba RLS/permissions za Supabase. " +
+        insertError.message
+      );
+    }
 
     currentProfile = data;
     return data;
   }
 
+  async function loadRequests() {
+    if (!currentUser || !currentProfile) return;
+
+    const box = $("requests");
+    box.replaceChildren();
+
+    const title = document.createElement("h3");
+    title.textContent = currentProfile.role === "passenger"
+      ? "Ibyifuzo by'ingendo zawe"
+      : "Ibyifuzo by'ingendo";
+    box.appendChild(title);
+
+    if (currentProfile.role === "rider") {
+      const note = document.createElement("p");
+      note.textContent =
+        "Konti y'umumotari irakora. Kugaragaza abagenzi bari hafi bisaba ko hategurwa uburyo bwo guhuza ibyifuzo n'aho abamotari bari.";
+      box.appendChild(note);
+      return;
+    }
+
+    const { data, error } = await client
+      .from("ride_requests")
+      .select("id, destination, status, created_at")
+      .eq("passenger_id", currentUser.id)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error(error);
+      const p = document.createElement("p");
+      p.textContent = "Ntitwabashije kubona ibyifuzo. Reba permissions/RLS za ride_requests muri Supabase.";
+      box.appendChild(p);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      const empty = document.createElement("p");
+      empty.textContent = "Nta cyifuzo urasaba.";
+      box.appendChild(empty);
+      return;
+    }
+
+    data.forEach(item => {
+      const row = document.createElement("p");
+      row.textContent =
+        "Aho ujya: " + (item.destination || "Ntabwo hazwi") +
+        " — Status: " + (item.status || "ntiramenyekana");
+      box.appendChild(row);
+    });
+  }
+
   async function openApp(user) {
     currentUser = user;
+    message("Turimo gufungura konti yawe...");
 
     try {
       const profile = await ensureProfile(user);
-
-      $("authSection").classList.add("hidden");
-      $("appSection").classList.remove("hidden");
-
-      $("welcome").textContent =
-        "Muraho, " + profile.full_name + "!";
-
-      $("accountRole").textContent =
-        profile.role === "rider"
-          ? "Konti y'umumotari"
-          : "Konti y'umugenzi";
-
-      $("riderTools").classList.toggle(
-        "hidden", profile.role !== "rider"
-      );
-
-      $("passengerTools").classList.toggle(
-        "hidden", profile.role !== "passenger"
-      );
-
+      showApp(profile);
       message("Winjiye muri MOTARI neza.");
-
       await loadRequests();
-
     } catch (error) {
+      showAuth();
       showError(error);
     }
   }
 
   $("signupForm").addEventListener("submit", async event => {
     event.preventDefault();
-
+    setBusy("signupButton", true, "Turimo gukora konti...");
     message("Turimo gukora konti yawe...");
 
     const fullName = $("fullName").value.trim();
@@ -356,11 +291,7 @@
         email,
         password,
         options: {
-          data: {
-            full_name: fullName,
-            phone,
-            role
-          }
+          data: { full_name: fullName, phone, role }
         }
       });
 
@@ -374,15 +305,16 @@
           "hanyuma winjire ukoresheje email n'ijambo ry'ibanga."
         );
       }
-
     } catch (error) {
       showError(error);
+    } finally {
+      setBusy("signupButton", false);
     }
   });
 
   $("loginForm").addEventListener("submit", async event => {
     event.preventDefault();
-
+    setBusy("loginButton", true, "Turimo kukwinjiza...");
     message("Turimo kukwinjiza...");
 
     try {
@@ -392,201 +324,164 @@
       });
 
       if (error) throw error;
+      if (!data.user) throw new Error("Supabase ntiyagaruye amakuru ya konti.");
 
       await openApp(data.user);
-
     } catch (error) {
       showError(error);
+    } finally {
+      setBusy("loginButton", false);
     }
   });
 
-  $("locationButton").addEventListener("click", async () => {
-    if (!navigator.geolocation) {
-      message("Telefone yawe ntiyemera GPS muri uru rubuga.");
+  $("locationButton").addEventListener("click", () => {
+    if (!currentUser || !currentProfile || currentProfile.role !== "rider") {
+      message("Injira muri konti y'umumotari kugira ngo usangize aho uherereye.");
       return;
     }
 
-    message("Turimo gushaka aho uherereye...");
+    if (!navigator.geolocation) {
+      message("Browser ya telefone yawe ntiyemera GPS.");
+      return;
+    }
 
-    navigator.geolocation.getCurrentPosition(
-      async position => {
-        try {
-          const latitude = position.coords.latitude;
-          const longitude = position.coords.longitude;
+    message("Turimo gushaka aho uherereye. Emerera browser gukoresha GPS.");
 
-          const { error } = await client
-            .from("rider_locations")
-            .upsert({
-              rider_id: currentUser.id,
-              latitude,
-              longitude,
-              updated_at: new Date().toISOString()
-            });
+    navigator.geolocation.getCurrentPosition(async position => {
+      try {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
 
-          if (error) throw error;
+        const { error } = await client.from("rider_locations").upsert({
+          rider_id: currentUser.id,
+          latitude,
+          longitude,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "rider_id" });
 
-          currentPosition = { latitude, longitude };
+        if (error) throw error;
 
-          message(
-            "Aho uherereye habitswe neza. " +
-            "Komeza gufungura MOTARI kugira ngo uvugurure aho uri."
-          );
+        $("location-name").textContent =
+          "Aho uherereye: " + latitude.toFixed(5) + ", " + longitude.toFixed(5);
 
-        } catch (error) {
-          showError(error);
-        }
-      },
-      error => {
-        message(
-          "Ntabwo tubonye aho uherereye. Emerera browser gukoresha GPS."
-        );
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000
+        message("Aho uherereye habitswe neza. Kanda nanone kugira ngo uvugurure GPS.");
+      } catch (error) {
+        showError(error);
       }
-    );
+    }, error => {
+      console.error("GPS error:", error);
+      message("Ntabwo tubonye aho uherereye. Fungura GPS kuri telefone kandi wemere browser kuyikoresha.");
+    }, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 10000
+    });
   });
 
-  $("requestButton").addEventListener("click", async () => {
+  $("requestButton").addEventListener("click", () => {
+    if (!currentUser || !currentProfile || currentProfile.role !== "passenger") {
+      message("Injira muri konti y'umugenzi kugira ngo usabe moto.");
+      return;
+    }
+
     const destination = $("destination").value.trim();
 
     if (!destination) {
       message("Banza wandike aho ushaka kujya.");
+      $("destination").focus();
       return;
     }
 
     if (!navigator.geolocation) {
-      message("Telefone yawe ntishobora gutanga GPS.");
+      message("Browser ya telefone yawe ntiyemera GPS.");
       return;
     }
 
     message("Turimo gufata aho uherereye...");
 
-    navigator.geolocation.getCurrentPosition(
-      async position => {
-        try {
-          const { error } = await client
-            .from("ride_requests")
-            .insert({
-              passenger_id: currentUser.id,
-              pickup_latitude: position.coords.latitude,
-              pickup_longitude: position.coords.longitude,
-              destination: destination
-            });
+    navigator.geolocation.getCurrentPosition(async position => {
+      try {
+        const { error } = await client.from("ride_requests").insert({
+          passenger_id: currentUser.id,
+          pickup_latitude: position.coords.latitude,
+          pickup_longitude: position.coords.longitude,
+          destination,
+          status: "pending"
+        });
 
-          if (error) throw error;
+        if (error) throw error;
 
-          message(
-            "Icyifuzo cyawe cyoherejwe. " +
-            "Kureba umugenzi cyangwa kubona umumotari " +
-            "bisaba ko dutegura n'uburyo bwo guhuza abakoresha."
-          );
-
-          await loadRequests();
-
-        } catch (error) {
-          showError(error);
-        }
-      },
-      () => {
-        message("Emera GPS kugira ngo usabe moto.");
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000
+        message("Icyifuzo cyawe cyoherejwe neza.");
+        await loadRequests();
+      } catch (error) {
+        showError(error);
       }
-    );
+    }, error => {
+      console.error("GPS error:", error);
+      message("Emera GPS kuri telefone kugira ngo usabe moto.");
+    }, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 10000
+    });
   });
 
-  async function loadRequests() {
-    if (!currentUser || !currentProfile) return;
-
-    const { data, error } = await client
-      .from("ride_requests")
-      .select("id, destination, status, created_at")
-      .eq("passenger_id", currentUser.id)
-      .order("created_at", { ascending: false })
-      .limit(10);
-
-    if (error) {
-      console.error(error);
-      $("requests").textContent =
-        "Ntitwabashije kubona ibyifuzo byawe ubu.";
-      return;
+  $("refreshButton").addEventListener("click", async () => {
+    try {
+      await loadRequests();
+      message("Amakuru avuguruwe.");
+    } catch (error) {
+      showError(error);
     }
-
-    $("requests").replaceChildren();
-
-    const title = document.createElement("h3");
-    title.textContent = "Ibyifuzo by'ingendo";
-    $("requests").appendChild(title);
-
-    if (!data || data.length === 0) {
-      const empty = document.createElement("p");
-      empty.textContent = "Nta cyifuzo urasaba.";
-      $("requests").appendChild(empty);
-      return;
-    }
-
-    data.forEach(item => {
-      const row = document.createElement("p");
-      row.textContent =
-        "Aho ujya: " + (item.destination || "Ntabwo hazwi") +
-        " — Status: " + item.status;
-      $("requests").appendChild(row);
-    });
-  }
-
-  $("refreshButton").addEventListener("click", loadRequests);
+  });
 
   $("logoutButton").addEventListener("click", async () => {
-    const { error } = await client.auth.signOut();
+    try {
+      const { error } = await client.auth.signOut();
+      if (error) throw error;
 
-    if (error) {
+      currentUser = null;
+      currentProfile = null;
+      $("requests").replaceChildren();
+      showAuth();
+      message("Wasohotse muri konti.");
+    } catch (error) {
       showError(error);
-      return;
     }
-
-    currentUser = null;
-    currentProfile = null;
-
-    $("appSection").classList.add("hidden");
-    $("authSection").classList.remove("hidden");
-
-    message("Wasohotse muri konti.");
   });
 
   async function start() {
-    if (
-  !SUPABASE_URL ||
-  !SUPABASE_KEY ||
-  SUPABASE_URL.includes("YOUR_PROJECT_URL") ||
-  SUPABASE_KEY.includes("YOUR_SUPABASE_KEY")
-) {
-  message("Banza ushyiremo Supabase Project URL na Publishable key.");
-  return;
+    if (!window.supabase || !window.supabase.createClient) {
+      message("Supabase library ntiyafungutse. Reba internet wongere ufungure urubuga.");
+      return;
     }
-    
+
+    if (!SUPABASE_URL.startsWith("https://") || !SUPABASE_KEY ||
+        SUPABASE_KEY.includes("YOUR_SUPABASE_KEY")) {
+      message("Amakuru ya Supabase ntabwo yuzuye. Reba Project URL na Publishable key.");
+      return;
+    }
+
+    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    showAuth();
 
     try {
       const { data, error } = await client.auth.getSession();
-
       if (error) throw error;
 
-      if (data.session) {
+      if (data.session && data.session.user) {
         await openApp(data.session.user);
       } else {
         message("Iyandikishe cyangwa winjire muri MOTARI.");
       }
-
     } catch (error) {
+      showAuth();
       showError(error);
     }
   }
 
   start();
+})();
 </script>
-
 </body>
 </html>
