@@ -325,6 +325,11 @@
     });
     const title = document.querySelector("title");
     if (title) title.textContent = currentLanguage === "en" ? "MOTARI - Find a Ride" : "MOTARI - Shaka Moto";
+    const locationLabel = document.getElementById("location-name");
+    if (locationLabel) {
+      if (lastKnownPlaceName) setLocationLabel(lastKnownPlaceName, !myLatitude || !myLongitude);
+      else locationLabel.textContent = currentLanguage === "en" ? "Finding your location..." : "Turimo kumenya aho uherereye...";
+    }
   }
   document.addEventListener("DOMContentLoaded", () => {
     const select = document.getElementById("languageSelect");
