@@ -1351,6 +1351,7 @@
   });
 
   $("mapLocationButton").addEventListener("click", locateOnMap);
+  $("publicLocationButton").addEventListener("click", requestPublicLocation);
 
   $("locationButton").addEventListener("click", () => {
     if (!currentUser || !currentProfile || currentProfile.role !== "rider") {
