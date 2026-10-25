@@ -407,37 +407,158 @@
     if (motariMap || !window.L) return;
     motariMap = L.map("motariMap").setView([-1.9441, 30.0619], 12);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" }).addTo(motariMap);
-    setTimeout(() => motariMap.invalidateSize(), 250);
+    setTimeout(() => {
+      motariMap.invalidateSize();
+      if (myLatitude != null && myLongitude != null) updateAdministrativeArea(myLatitude, myLongitude, false);
+    }, 250);
   }
+
   let lastGeocodeAt = 0;
   let geocodeInProgress = false;
   let lastKnownPlaceName = "";
+  let lastKnownAdmin = null;
   let headerLocationWatchId = null;
+  let lastAdminLookupKey = "";
+  let lastSectorKey = "";
+  let adminAreaLayer = null;
   const PLACE_STORAGE_KEY = "motari_last_known_place_v1";
+  const ADMIN_STORAGE_KEY = "motari_last_known_admin_v1";
+  const ADMIN_MAP_URL = "https://gh.space.gov.rw/server/rest/services/Admin_Boundaries/MapServer";
 
   function setLocationLabel(place, lastKnown = false) {
     const label = $("location-name");
     if (!label || !place) return;
     const prefix = currentLanguage === "en"
-      ? (lastKnown ? "Last known location: " : "Your location: ")
-      : (lastKnown ? "Aho uheruka kugaragara: " : "Aho uri: ");
+      ? (lastKnown ? "Last known area: " : "Your area: ")
+      : (lastKnown ? "Agace uherukamo: " : "Agace urimo: ");
     label.textContent = prefix + place;
     label.setAttribute("aria-live", "polite");
   }
 
+  function formatAdminPlace(admin) {
+    if (!admin) return "";
+    const parts = [];
+    const fields = [
+      ["village", currentLanguage === "en" ? "Village" : "Umudugudu"],
+      ["cell", currentLanguage === "en" ? "Cell" : "Akagari"],
+      ["sector", currentLanguage === "en" ? "Sector" : "Umurenge"],
+      ["district", currentLanguage === "en" ? "District" : "Akarere"],
+      ["province", currentLanguage === "en" ? "Province/City" : "Intara/Umujyi"]
+    ];
+    for (const [key, label] of fields) {
+      const value = admin[key];
+      if (value && !parts.some(part => part.toLowerCase() === String(value).toLowerCase())) {
+        parts.push(label + ": " + value);
+      }
+    }
+    return parts.join(" · ");
+  }
+
+  function saveAdminPlace(admin) {
+    lastKnownAdmin = admin;
+    lastKnownPlaceName = formatAdminPlace(admin);
+    if (lastKnownPlaceName) {
+      setLocationLabel(lastKnownPlaceName, false);
+      try {
+        localStorage.setItem(PLACE_STORAGE_KEY, lastKnownPlaceName);
+        localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(admin));
+      } catch (_) {}
+    }
+  }
+
   function loadSavedPlaceName() {
     try {
-      const saved = localStorage.getItem(PLACE_STORAGE_KEY);
-      if (saved) {
-        lastKnownPlaceName = saved;
-        setLocationLabel(saved, true);
+      const rawAdmin = localStorage.getItem(ADMIN_STORAGE_KEY);
+      if (rawAdmin) {
+        const parsed = JSON.parse(rawAdmin);
+        if (parsed && typeof parsed === "object") {
+          lastKnownAdmin = parsed;
+          lastKnownPlaceName = formatAdminPlace(parsed);
+        }
       }
+      if (!lastKnownPlaceName) lastKnownPlaceName = localStorage.getItem(PLACE_STORAGE_KEY) || "";
+      if (lastKnownPlaceName) setLocationLabel(lastKnownPlaceName, true);
     } catch (_) {}
   }
 
-  async function updateLocationName(lat, lon) {
+  async function queryAdminArea(lat, lon) {
+    const params = new URLSearchParams({
+      geometry: JSON.stringify({ x: lon, y: lat, spatialReference: { wkid: 4326 } }),
+      geometryType: "esriGeometryPoint",
+      inSR: "4326",
+      spatialRel: "esriSpatialRelIntersects",
+      outFields: "province,district,sector,cell,village",
+      returnGeometry: "false",
+      f: "json"
+    });
+    const response = await fetch(ADMIN_MAP_URL + "/4/query?" + params.toString(), { headers: { "Accept": "application/json" } });
+    if (!response.ok) throw new Error("Rwanda administrative map unavailable");
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message || "Administrative map query failed");
+    const attrs = data.features && data.features[0] && data.features[0].attributes;
+    if (!attrs) return null;
+    return {
+      province: attrs.province || "",
+      district: attrs.district || "",
+      sector: attrs.sector || "",
+      cell: attrs.cell || "",
+      village: attrs.village || ""
+    };
+  }
+
+  async function drawSectorBoundary(lat, lon, sectorKey) {
+    if (!motariMap || !window.L || !sectorKey || sectorKey === lastSectorKey) return;
+    try {
+      const params = new URLSearchParams({
+        geometry: JSON.stringify({ x: lon, y: lat, spatialReference: { wkid: 4326 } }),
+        geometryType: "esriGeometryPoint",
+        inSR: "4326",
+        spatialRel: "esriSpatialRelIntersects",
+        outFields: "sector,district,province",
+        returnGeometry: "true",
+        outSR: "4326",
+        f: "geojson"
+      });
+      const response = await fetch(ADMIN_MAP_URL + "/3/query?" + params.toString(), { headers: { "Accept": "application/geo+json, application/json" } });
+      if (!response.ok) throw new Error("Sector boundary unavailable");
+      const geo = await response.json();
+      if (!geo.features || !geo.features.length) return;
+      if (adminAreaLayer) motariMap.removeLayer(adminAreaLayer);
+      adminAreaLayer = L.geoJSON(geo, {
+        style: { color: "#087443", weight: 3, opacity: 0.95, fillColor: "#25a66a", fillOpacity: 0.12 }
+      }).addTo(motariMap);
+      lastSectorKey = sectorKey;
+      const bounds = adminAreaLayer.getBounds();
+      if (bounds.isValid()) motariMap.fitBounds(bounds, { padding: [18, 18], maxZoom: 15 });
+      if (myMapMarker) myMapMarker.setZIndexOffset(1000);
+    } catch (error) {
+      console.warn("MOTARI sector boundary:", error.message);
+      // Keep the normal map usable even when the official boundary service is offline.
+    }
+  }
+
+  async function updateAdministrativeArea(lat, lon, drawMap = true) {
+    const lookupKey = lat.toFixed(3) + "," + lon.toFixed(3);
+    if (lookupKey === lastAdminLookupKey) return;
+    lastAdminLookupKey = lookupKey;
+    try {
+      const admin = await queryAdminArea(lat, lon);
+      if (admin && (admin.village || admin.cell || admin.sector || admin.district)) {
+        saveAdminPlace(admin);
+        const sectorKey = [admin.province, admin.district, admin.sector].join("|");
+        if (drawMap) await drawSectorBoundary(lat, lon, sectorKey);
+        return;
+      }
+      throw new Error("No administrative area matched these coordinates");
+    } catch (error) {
+      console.warn("MOTARI administrative area lookup:", error.message);
+      // Fall back to OpenStreetMap only if the official Rwanda boundaries service fails.
+      await updateLocationNameFallback(lat, lon);
+    }
+  }
+
+  async function updateLocationNameFallback(lat, lon) {
     const now = Date.now();
-    // Respect Nominatim's public service limits and avoid duplicate requests.
     if (geocodeInProgress || now - lastGeocodeAt < 60000) return;
     geocodeInProgress = true;
     lastGeocodeAt = now;
@@ -448,32 +569,17 @@
       if (!response.ok) throw new Error("Reverse geocoding unavailable");
       const data = await response.json();
       const a = data.address || {};
-
-      // Prefer the smallest named area available, then larger administrative areas.
-      // Some Rwanda cell/village names are not present in OpenStreetMap data.
-      const keys = [
-        "village", "hamlet", "cell", "neighbourhood", "neighborhood",
-        "suburb", "quarter", "sector", "city_district", "district",
-        "county", "state_district", "town", "city", "municipality", "state"
-      ];
-      const parts = [];
-      for (const key of keys) {
-        const value = a[key];
-        if (value && !parts.some(part => part.toLowerCase() === String(value).toLowerCase())) {
-          parts.push(String(value));
-        }
-        if (parts.length >= 4) break;
-      }
-      const place = parts.join(", ") ||
+      const parts = [a.village, a.hamlet, a.neighbourhood, a.suburb, a.quarter, a.road,
+        a.town, a.city, a.city_district, a.state_district, a.state]
+        .filter((value, index, all) => value && all.indexOf(value) === index);
+      const place = parts.slice(0, 4).join(", ") ||
         (data.display_name || "").split(",").map(x => x.trim()).filter(Boolean).slice(0, 4).join(", ");
       if (!place) throw new Error("No place name returned");
-
       lastKnownPlaceName = place;
       setLocationLabel(place, false);
       try { localStorage.setItem(PLACE_STORAGE_KEY, place); } catch (_) {}
     } catch (error) {
       console.warn("MOTARI place-name lookup failed:", error);
-      // Never erase the last place name when GPS or the map service temporarily fails.
       if (lastKnownPlaceName) setLocationLabel(lastKnownPlaceName, true);
       else $("location-name").textContent = currentLanguage === "en"
         ? "Finding your village, cell, sector and district…"
@@ -481,6 +587,10 @@
     } finally {
       geocodeInProgress = false;
     }
+  }
+
+  function updateLocationName(lat, lon) {
+    updateAdministrativeArea(lat, lon, true);
   }
 
   function locateHeaderPlace() {
@@ -491,16 +601,11 @@
         : "Iyi browser ntishyigikira GPS.";
       return;
     }
-
-    // Keep receiving GPS updates while this page is open, so the place name can
-    // refresh if the user moves. Failed lookups never clear the saved label.
-    if (headerLocationWatchId !== null) {
-      navigator.geolocation.clearWatch(headerLocationWatchId);
-    }
+    if (headerLocationWatchId !== null) navigator.geolocation.clearWatch(headerLocationWatchId);
     headerLocationWatchId = navigator.geolocation.watchPosition(position => {
       myLatitude = position.coords.latitude;
       myLongitude = position.coords.longitude;
-      updateLocationName(myLatitude, myLongitude);
+      updateAdministrativeArea(myLatitude, myLongitude, false);
     }, error => {
       console.warn("MOTARI header GPS:", error.message);
       if (!lastKnownPlaceName) $("location-name").textContent = currentLanguage === "en"
@@ -520,10 +625,11 @@
       if (myMapMarker) myMapMarker.setLatLng([lat, lon]);
       else myMapMarker = L.marker([lat, lon]).addTo(motariMap).bindPopup("Aho uri");
       motariMap.setView([lat, lon], 15);
-      updateLocationName(lat, lon);
-      $("mapStatus").textContent = "Aho uri hagaragaye ku ikarita.";
+      updateAdministrativeArea(lat, lon, true);
+      $("mapStatus").textContent = "GPS ibonetse. Turimo kwerekana imipaka y'umurenge wawe aho iboneka.";
     }, () => { $("mapStatus").textContent = "Emera GPS kuri telefone, wongere ugerageze."; }, { enableHighAccuracy:true, timeout:15000, maximumAge:10000 });
   }
+
   function showApp(profile) {
     $("authSection").classList.add("hidden");
     $("appSection").classList.remove("hidden");
