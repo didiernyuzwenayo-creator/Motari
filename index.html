@@ -366,11 +366,44 @@
     $("riderTools").classList.toggle("hidden", profile.role !== "rider");
     $("passengerTools").classList.toggle("hidden", profile.role !== "passenger");
     $("offlineRidersCard").classList.toggle("hidden", profile.role !== "passenger");
-    if (profile.role === "rider" && profile.rider_verified !== true) {
-      message("Konti y'umumotari iracyategereje kwemezwa n'umuyobozi. Nyuma yo kwemezwa, uzashobora gusangiza GPS no kugaragara ku bagenzi.");
+    if (profile.role === "rider") {
+      message("Turimo kubika aho uherereye kugira ngo abagenzi bashobore kukubona ku rutonde rw'abamotari batari online.");
+      saveRiderLoginLocation();
     }
     initMotariMap();
     locateOnMap();
+  }
+
+  // Save one GPS snapshot at login without marking the rider as online.
+  // Riders only become online when they explicitly press the location-sharing button.
+  function saveRiderLoginLocation() {
+    if (!currentUser || !currentProfile || currentProfile.role !== "rider" || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async position => {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      myLatitude = latitude;
+      myLongitude = longitude;
+      lastRiderLatitude = latitude;
+      lastRiderLongitude = longitude;
+      updateLocationName(latitude, longitude);
+      const { error } = await client.from("rider_locations").upsert({
+        rider_id: currentUser.id,
+        latitude,
+        longitude,
+        updated_at: new Date().toISOString(),
+        is_online: false
+      }, { onConflict: "rider_id" });
+      if (error) {
+        console.warn("MOTARI login GPS save failed:", error.message);
+        message("GPS yabonetse ariko aho uherereye ntihabitswe. Reba uruhushya n'imiterere ya Supabase.");
+      } else {
+        message("Aho uherereye habitswe. Ugaragara ku rutonde rw'abamotari batari online, utabaye online.");
+        loadNearbyOfflineRiders();
+      }
+    }, error => {
+      console.warn("MOTARI login GPS unavailable:", error.message);
+      message("Winjiye muri MOTARI. Emerera GPS kuri telefone kugira ngo tubike aho uherereye ku rutonde rw'abamotari batari online.");
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
   }
 
   async function ensureProfile(user) {
@@ -496,7 +529,7 @@
 
     const { data: profiles, error: profileError } = await client
       .from("profiles").select("id,full_name,phone,role")
-      .eq("role", "rider").eq("rider_verified", true).limit(200);
+      .eq("role", "rider").limit(200);
     if (profileError) {
       $("offlineRidersStatus").textContent = "Ntitwashoboye kubona urutonde rw'abamotari: " + profileError.message;
       return;
@@ -781,10 +814,6 @@
   $("locationButton").addEventListener("click", () => {
     if (!currentUser || !currentProfile || currentProfile.role !== "rider") {
       message("Injira muri konti y'umumotari kugira ngo usangize aho uherereye.");
-      return;
-    }
-    if (currentProfile.rider_verified !== true) {
-      message("Konti y'umumotari iracyategereje kwemezwa n'umuyobozi. Ntushobora kugaragara ku bagenzi utaremezwa.");
       return;
     }
     if (!navigator.geolocation) {
