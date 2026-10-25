@@ -125,6 +125,7 @@
     <div class="card"><h2 id="nearbyTitle">Abantu bakwegereye</h2><p id="nearbyStatus">Tegereza gato...</p><div id="nearbyContacts"></div></div>
     <div id="offlineRidersCard" class="card hidden"><h2>Abamotari batari online muri aka gace</h2><p id="offlineRidersStatus">Turimo kureba abamotari bo hafi.</p><div id="offlineRidersList"></div><small>Aho baherukaga kugaragara ni amakuru aheruka kubikwa, si GPS yabo y'ubu.</small></div>
     <div id="requests"></div>
+    <div class="card"><h2 id="historyTitle">Amateka y’ingendo</h2><p id="historyHelp">Ingendo zarangiye cyangwa zahagaritswe zibikwa hano, ntizivange n’iziri gukorwa.</p><button id="historyButton" type="button" class="secondary">Reba amateka y’ingendo</button><div id="rideHistory" class="hidden"></div></div>
     <button id="logoutButton" class="secondary">Sohoka muri konti</button>
   </section>
 </main>
@@ -1018,26 +1019,31 @@
       : "Ibyifuzo by'abagenzi";
     box.appendChild(title);
 
-    const query = client.from("ride_requests")
+    let query = client.from("ride_requests")
       .select("id, passenger_id, rider_id, destination, status, created_at")
       .order("created_at", { ascending: false })
-      .limit(30);
-    const { data, error } = currentProfile.role === "passenger"
+      .limit(50);
+    const result = currentProfile.role === "passenger"
       ? await query.eq("passenger_id", currentUser.id)
       : await query.or("status.eq.pending,rider_id.eq." + currentUser.id);
 
-    if (error) {
-      console.error("MOTARI requests:", error);
+    if (result.error) {
+      console.error("MOTARI requests:", result.error);
       const p = document.createElement("p");
       p.textContent = "Ntitwabashije kubona ibyifuzo. Ongera ugerageze.";
       box.appendChild(p);
       return;
     }
-    if (!data || data.length === 0) {
+
+    const data = (result.data || []).filter(item =>
+      (item.status === "pending" || item.status === "accepted") &&
+      (currentProfile.role !== "rider" || item.status === "pending" || item.rider_id === currentUser.id)
+    );
+    if (data.length === 0) {
       const empty = document.createElement("p");
       empty.textContent = currentProfile.role === "rider"
-        ? "Nta busabe bw'abagenzi buraboneka. Komeza kuba online kugira ngo ubone ubusabe bushya."
-        : "Nta cyifuzo urasaba.";
+        ? "Nta busabe bushya cyangwa urugendo uri gukora bihari."
+        : "Nta rugendo ruri gukorwa cyangwa ubusabe bugitegereje.";
       box.appendChild(empty);
       return;
     }
@@ -1046,7 +1052,7 @@
       row.style.cssText = "padding:12px;margin:10px 0;background:#f5f7f5;border-radius:9px";
       const details = document.createElement("p");
       details.textContent = "Aho ajya: " + (item.destination || "Ntabwo hazwi") +
-        " — " + ({pending:"Birategereje umumotari",accepted:"Umumotari yemeye urugendo",completed:"Urugendo rwarangiye",cancelled:"Urugendo rwahagaritswe"}[item.status] || item.status);
+        " — " + ({pending:"Birategereje umumotari",accepted:"Umumotari yemeye urugendo"}[item.status] || item.status);
       row.appendChild(details);
       if (currentProfile.role === "rider" && item.status === "pending" && !item.rider_id) {
         const accept = document.createElement("button");
@@ -1082,6 +1088,7 @@
           } else {
             message("Urugendo rwanditswe ko rwarangiye.");
             await loadRequests();
+            if (!$("rideHistory").classList.contains("hidden")) await loadRideHistory();
           }
         });
         row.appendChild(complete);
@@ -1108,6 +1115,71 @@
       box.appendChild(row);
     });
   }
+
+  async function loadRideHistory() {
+    if (!currentUser || !currentProfile) return;
+    const history = $("rideHistory");
+    history.replaceChildren();
+    const query = client.from("ride_requests")
+      .select("id, passenger_id, rider_id, destination, status, created_at")
+      .in("status", ["completed", "cancelled"])
+      .order("created_at", { ascending: false })
+      .limit(100);
+    const result = currentProfile.role === "passenger"
+      ? await query.eq("passenger_id", currentUser.id)
+      : await query.eq("rider_id", currentUser.id);
+    if (result.error) {
+      const p = document.createElement("p");
+      p.textContent = "Ntibyashobotse gufungura amateka. " + result.error.message;
+      history.appendChild(p);
+      return;
+    }
+    if (!result.data || result.data.length === 0) {
+      const p = document.createElement("p");
+      p.textContent = "Nta ngendo zarangiye cyangwa zahagaritswe wabitswe.";
+      history.appendChild(p);
+      return;
+    }
+    result.data.forEach(item => {
+      const row = document.createElement("div");
+      row.style.cssText = "padding:12px;margin:10px 0;background:#f5f7f5;border-radius:9px";
+      const details = document.createElement("p");
+      details.textContent = (item.destination || "Ntabwo hazwi") + " — " +
+        (item.status === "completed" ? "Urugendo rwarangiye" : "Urugendo rwahagaritswe") +
+        (item.created_at ? " · " + new Date(item.created_at).toLocaleDateString() : "");
+      row.appendChild(details);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "secondary";
+      remove.textContent = "Siba uru rugendo";
+      remove.addEventListener("click", async () => {
+        if (!confirm("Urashaka koko gusiba uru rugendo? Ntushobora kurugarura nyuma yo kurusiba.")) return;
+        remove.disabled = true;
+        let deletion = client.from("ride_requests").delete().eq("id", item.id);
+        deletion = currentProfile.role === "passenger"
+          ? deletion.eq("passenger_id", currentUser.id)
+          : deletion.eq("rider_id", currentUser.id);
+        const { error } = await deletion;
+        if (error) {
+          message("Ntibyashobotse gusiba urugendo. Reba uruhushya rwa DELETE muri Supabase. " + error.message);
+          remove.disabled = false;
+          return;
+        }
+        message("Urugendo rwasibwe.");
+        await loadRideHistory();
+      });
+      row.appendChild(remove);
+      history.appendChild(row);
+    });
+  }
+
+  $("historyButton").addEventListener("click", async () => {
+    const history = $("rideHistory");
+    const opening = history.classList.contains("hidden");
+    history.classList.toggle("hidden", !opening);
+    $("historyButton").textContent = opening ? "Hisha amateka y’ingendo" : "Reba amateka y’ingendo";
+    if (opening) await loadRideHistory();
+  });
 
   function startLiveUpdates() {
     if (liveRefreshTimer) clearInterval(liveRefreshTimer);
