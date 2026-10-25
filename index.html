@@ -45,6 +45,14 @@
 
 
 
+<section id="publicLocationCard" class="card" style="max-width:560px;margin:18px auto;padding:16px;background:#fff;border-radius:12px;box-shadow:0 2px 9px #00000012">
+  <h2 style="color:#087443;margin-top:0">📍 Aho uherereye</h2>
+  <p id="publicLocationStatus">Emera GPS kugira ngo MOTARI yerekane aho uri mbere yo kwinjira.</p>
+  <div id="publicMotariMap" style="height:230px;border-radius:10px;background:#eef3ef"></div>
+  <button id="publicLocationButton" type="button" style="margin-top:10px">Menya aho ndi</button>
+  <small style="display:block;margin-top:8px;color:#555">Aho uri hagaragarira wowe gusa. Gusangiza abandi location bikorwa nyuma yo kwinjira no kubyemera.</small>
+</section>
+
 <main>
   <div class="card">
     <h2>Murakaza neza kuri MOTARI</h2>
@@ -348,6 +356,8 @@
   let currentUser = null;
   let currentProfile = null;
   let motariMap = null;
+  let publicMotariMap = null;
+  let publicLocationMarker = null;
   let myMapMarker = null;
   let riderWatchId = null;
   let riderHeartbeatTimer = null;
@@ -412,6 +422,52 @@
       ? "Your account registration has started. Open " + email + " and click the confirmation link. MOTARI will open after confirmation. If you are returned here and are not signed in automatically, log in with your email and password."
       : "Kwiyandikisha byatangiye. Fungura email yawe (" + email + ") ukande ku murongo wo kwemeza konti. Nyuma yo kwemeza, MOTARI izafunguka. Nugaruka kuri uru rupapuro utinjiye mu buryo bwikora, injira ukoresheje email n'ijambo ry'ibanga.";
     message(currentLanguage === "en" ? "Please confirm your email address." : "Nyamuneka emeza email yawe.");
+  }
+
+  function initPublicMotariMap() {
+    if (publicMotariMap || !window.L) return;
+    publicMotariMap = L.map("publicMotariMap").setView([-1.9441, 30.0619], 12);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(publicMotariMap);
+    setTimeout(() => {
+      if (publicMotariMap) publicMotariMap.invalidateSize();
+      if (myLatitude != null && myLongitude != null) updatePublicLocationMarker(myLatitude, myLongitude);
+    }, 300);
+  }
+
+  function updatePublicLocationMarker(lat, lon) {
+    initPublicMotariMap();
+    if (!publicMotariMap || !window.L) return;
+    const point = [lat, lon];
+    if (publicLocationMarker) publicLocationMarker.setLatLng(point);
+    else publicLocationMarker = L.marker(point).addTo(publicMotariMap).bindPopup("Aho uherereye");
+    publicMotariMap.setView(point, 15);
+    $("publicLocationStatus").textContent = currentLanguage === "en"
+      ? "Your current location is shown on this map."
+      : "Aho uherereye hagaragaye ku ikarita.";
+  }
+
+  function requestPublicLocation() {
+    initPublicMotariMap();
+    const status = $("publicLocationStatus");
+    if (!navigator.geolocation) {
+      status.textContent = "Iyi browser ntiyemera GPS. Gerageza Chrome.";
+      return;
+    }
+    status.textContent = currentLanguage === "en" ? "Finding your location..." : "Turimo gushaka aho uherereye...";
+    navigator.geolocation.getCurrentPosition(position => {
+      myLatitude = position.coords.latitude;
+      myLongitude = position.coords.longitude;
+      updatePublicLocationMarker(myLatitude, myLongitude);
+      updateAdministrativeArea(myLatitude, myLongitude, false);
+    }, error => {
+      console.warn("MOTARI public GPS:", error.message);
+      status.textContent = error.code === 1
+        ? (currentLanguage === "en" ? "Please allow location access in your browser settings." : "Emera GPS muri Chrome cyangwa muri settings za telefone.")
+        : (currentLanguage === "en" ? "Location could not be found. Check GPS and internet, then try again." : "Ntitwabashije kubona location. Fungura GPS na internet, wongere ugerageze.");
+    }, { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 });
   }
 
   function initMotariMap() {
@@ -730,6 +786,7 @@
     headerLocationWatchId = navigator.geolocation.watchPosition(position => {
       myLatitude = position.coords.latitude;
       myLongitude = position.coords.longitude;
+      updatePublicLocationMarker(myLatitude, myLongitude);
       updateAdministrativeArea(myLatitude, myLongitude, false);
     }, error => {
       console.warn("MOTARI header GPS:", error.message);
@@ -1465,6 +1522,8 @@
   async function start() {
     // Resolve the visitor's current coordinates to a human-readable place name on page load.
     locateHeaderPlace();
+    initPublicMotariMap();
+    requestPublicLocation();
     if (!window.supabase || !window.supabase.createClient) {
       message("Supabase library ntiyafungutse. Reba internet wongere ufungure urubuga.");
       return;
