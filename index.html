@@ -412,26 +412,55 @@
     setTimeout(() => motariMap.invalidateSize(), 250);
   }
   let lastGeocodeAt = 0;
+  let geocodeInProgress = false;
   async function updateLocationName(lat, lon) {
     const now = Date.now();
-    if (now - lastGeocodeAt < 30000) return;
-    lastGeocodeAt = now;
+    if (geocodeInProgress || now - lastGeocodeAt < 30000) return;
+    geocodeInProgress = true;
     const label = $("location-name");
+    const prefix = currentLanguage === "en" ? "Your location: " : "Aho uri: ";
     try {
       const url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" +
-        encodeURIComponent(lat) + "&lon=" + encodeURIComponent(lon) + "&zoom=16";
+        encodeURIComponent(lat) + "&lon=" + encodeURIComponent(lon) + "&zoom=18&addressdetails=1";
       const response = await fetch(url, { headers: { "Accept": "application/json" } });
       if (!response.ok) throw new Error("Reverse geocoding unavailable");
       const data = await response.json();
       const a = data.address || {};
-      const place = a.road || a.neighbourhood || a.suburb || a.village || a.town || a.city || a.county;
-      const prefix = currentLanguage === "en" ? "Your location: " : "Aho uri: ";
-      if (place) label.textContent = prefix + place;
-      else label.textContent = prefix + lat.toFixed(5) + ", " + lon.toFixed(5);
-    } catch (_) {
-      const prefix = currentLanguage === "en" ? "Your location: " : "Aho uri: ";
-      label.textContent = prefix + lat.toFixed(5) + ", " + lon.toFixed(5);
+      // Rwanda's address data often uses cell, village, sector, or district rather than city/road.
+      const parts = [
+        a.road, a.residential, a.neighbourhood, a.suburb, a.hamlet, a.village,
+        a.quarter, a.city_district, a.town, a.city, a.municipality, a.county, a.state
+      ].filter((value, index, all) => value && all.indexOf(value) === index);
+      const place = parts.slice(0, 3).join(", ") || (data.display_name || "").split(",").slice(0, 3).join(", ");
+      if (!place) throw new Error("No place name returned");
+      label.textContent = prefix + place;
+      lastGeocodeAt = Date.now();
+    } catch (error) {
+      console.warn("MOTARI place-name lookup failed:", error);
+      label.textContent = currentLanguage === "en"
+        ? "Your GPS is on, but the place name could not be loaded. Check internet and try again."
+        : "GPS yabonetse ariko izina ry'ahantu ntiryabonetse. Reba internet wongere ugerageze.";
+    } finally {
+      geocodeInProgress = false;
     }
+  }
+
+  function locateHeaderPlace() {
+    const label = $("location-name");
+    if (!navigator.geolocation) {
+      label.textContent = currentLanguage === "en" ? "GPS is not supported by this browser." : "Iyi browser ntishyigikira GPS.";
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(position => {
+      myLatitude = position.coords.latitude;
+      myLongitude = position.coords.longitude;
+      updateLocationName(myLatitude, myLongitude);
+    }, error => {
+      console.warn("MOTARI header GPS:", error.message);
+      label.textContent = currentLanguage === "en"
+        ? "Allow location access to show the place name."
+        : "Emera GPS kugira ngo hagaragare izina ry'ahantu uri.";
+    }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
   }
 
   function locateOnMap() {
@@ -1081,6 +1110,8 @@
   });
 
   async function start() {
+    // Resolve the visitor's current coordinates to a human-readable place name on page load.
+    locateHeaderPlace();
     if (!window.supabase || !window.supabase.createClient) {
       message("Supabase library ntiyafungutse. Reba internet wongere ufungure urubuga.");
       return;
