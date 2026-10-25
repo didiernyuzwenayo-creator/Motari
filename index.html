@@ -110,6 +110,7 @@
 
     <button id="refreshButton" class="secondary">Reba ibyifuzo byanjye</button>
     <div class="card"><h2 id="nearbyTitle">Abantu bakwegereye</h2><p id="nearbyStatus">Tegereza gato...</p><div id="nearbyContacts"></div></div>
+    <div id="offlineRidersCard" class="card hidden"><h2>Abamotari batari online muri aka gace</h2><p id="offlineRidersStatus">Turimo kureba abamotari bo hafi.</p><div id="offlineRidersList"></div><small>Aho baherukaga kugaragara ni amakuru aheruka kubikwa, si GPS yabo y'ubu.</small></div>
     <div id="requests"></div>
     <button id="logoutButton" class="secondary">Sohoka muri konti</button>
   </section>
@@ -364,6 +365,7 @@
 
     $("riderTools").classList.toggle("hidden", profile.role !== "rider");
     $("passengerTools").classList.toggle("hidden", profile.role !== "passenger");
+    $("offlineRidersCard").classList.toggle("hidden", profile.role !== "passenger");
     if (profile.role === "rider" && profile.rider_verified !== true) {
       message("Konti y'umumotari iracyategereje kwemezwa n'umuyobozi. Nyuma yo kwemezwa, uzashobora gusangiza GPS no kugaragara ku bagenzi.");
     }
@@ -481,6 +483,72 @@
     } else { const no=document.createElement("p"); no.textContent="Nta nimero ya telefone yashyizwe kuri konti."; card.appendChild(no); }
     container.appendChild(card);
   }
+  async function loadNearbyOfflineRiders() {
+    const card = $("offlineRidersCard");
+    const box = $("offlineRidersList");
+    if (!currentUser || !currentProfile || currentProfile.role !== "passenger" || !card || !box) return;
+    box.replaceChildren();
+    $("offlineRidersStatus").textContent = "Turimo gushaka abamotari baherutse kugaragara muri aka gace...";
+    if (myLatitude == null || myLongitude == null) {
+      $("offlineRidersStatus").textContent = "Banza wemere GPS yawe kugira ngo tubone abamotari bo mu gace urimo.";
+      return;
+    }
+
+    const { data: profiles, error: profileError } = await client
+      .from("profiles").select("id,full_name,phone,role")
+      .eq("role", "rider").eq("rider_verified", true).limit(200);
+    if (profileError) {
+      $("offlineRidersStatus").textContent = "Ntitwashoboye kubona urutonde rw'abamotari: " + profileError.message;
+      return;
+    }
+    if (!profiles || profiles.length === 0) {
+      $("offlineRidersStatus").textContent = "Nta mumotari wemejwe uraboneka muri sisitemu.";
+      return;
+    }
+
+    const { data: locations, error: locationError } = await client
+      .from("rider_locations").select("rider_id,latitude,longitude,updated_at,is_online")
+      .in("rider_id", profiles.map(p => p.id))
+      .gte("updated_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+      .limit(300);
+    if (locationError) {
+      $("offlineRidersStatus").textContent = "Ntitwashoboye kubona aho baherukaga kugaragara: " + locationError.message;
+      return;
+    }
+
+    const profileById = new Map(profiles.map(p => [p.id, p]));
+    const latestByRider = new Map();
+    (locations || []).forEach(loc => {
+      if (!Number.isFinite(Number(loc.latitude)) || !Number.isFinite(Number(loc.longitude))) return;
+      const old = latestByRider.get(loc.rider_id);
+      if (!old || new Date(loc.updated_at) > new Date(old.updated_at)) latestByRider.set(loc.rider_id, loc);
+    });
+
+    const nearby = [];
+    latestByRider.forEach(loc => {
+      const profile = profileById.get(loc.rider_id);
+      if (!profile) return;
+      const ageMs = Date.now() - new Date(loc.updated_at).getTime();
+      if (loc.is_online === true && ageMs <= 120000) return;
+      const distance = distanceKm(myLatitude, myLongitude, Number(loc.latitude), Number(loc.longitude));
+      if (distance <= 5) nearby.push({ profile, distance, ageMs });
+    });
+    nearby.sort((a,b) => a.distance - b.distance);
+
+    if (!nearby.length) {
+      $("offlineRidersStatus").textContent = "Nta mumotari uzwi uherutse kugaragara muri kilometero 5 uvuye aho uri mu masaha 24 ashize.";
+      return;
+    }
+    nearby.forEach(item => {
+      const ageMinutes = Math.max(1, Math.round(item.ageMs / 60000));
+      const ageText = item.ageMs < 60 * 60000
+        ? "Yaherukaga kugaragara hashize iminota " + ageMinutes
+        : "Yaherukaga kugaragara hashize amasaha " + Math.max(1, Math.round(item.ageMs / 3600000));
+      addContactCard(box, item.profile, item.distance, "OFFLINE • " + ageText + " • Agace aherukagamo");
+    });
+    $("offlineRidersStatus").textContent = "Abamotari batari online ariko baherutse kugaragara muri kilometero 5. Aho baherukaga ni amakuru ashaje.";
+  }
+
   async function loadNearbyContacts() {
     if(!currentUser || !currentProfile) return;
     const box=$("nearbyContacts"); if(!box) return; box.replaceChildren();
@@ -618,14 +686,16 @@
     loadRequests();
     loadRiderLocations();
     loadNearbyContacts();
+    loadNearbyOfflineRiders();
     liveRefreshTimer = setInterval(() => {
       loadRequests();
       loadRiderLocations();
       loadNearbyContacts();
+      loadNearbyOfflineRiders();
     }, 10000);
     realtimeChannel = client.channel("motari-live-" + currentUser.id)
       .on("postgres_changes", { event: "*", schema: "public", table: "ride_requests" }, () => loadRequests())
-      .on("postgres_changes", { event: "*", schema: "public", table: "rider_locations" }, () => { loadRiderLocations(); loadNearbyContacts(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "rider_locations" }, () => { loadRiderLocations(); loadNearbyContacts(); loadNearbyOfflineRiders(); })
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => loadNearbyContacts())
       .subscribe();
   }
