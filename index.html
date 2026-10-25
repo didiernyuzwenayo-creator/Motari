@@ -294,7 +294,8 @@
     const select = document.getElementById("languageSelect");
     if (select && select.value !== currentLanguage) select.value = currentLanguage;
     document.querySelectorAll("label, h2, h3, p, button, option, small, footer p").forEach(el => {
-      if (el.closest("#languageChooser") || el.id === "message") return;
+      // The location label is dynamic: do not let language translation overwrite the GPS place name.
+      if (el.closest("#languageChooser") || el.id === "message" || el.id === "location-name") return;
       if (!el.dataset.rwText) el.dataset.rwText = el.textContent;
       const original = el.dataset.rwText;
       const translated = translateValue(original);
@@ -311,9 +312,6 @@
     });
     const title = document.querySelector("title");
     if (title) title.textContent = currentLanguage === "en" ? "MOTARI - Find a Ride" : "MOTARI - Shaka Moto";
-    const locationName = document.getElementById("location-name");
-    if (locationName && !locationName.dataset.rwText) locationName.dataset.rwText = locationName.textContent;
-    if (locationName) locationName.textContent = translateValue(locationName.dataset.rwText);
   }
   document.addEventListener("DOMContentLoaded", () => {
     const select = document.getElementById("languageSelect");
@@ -414,24 +412,35 @@
   let lastGeocodeAt = 0;
   let geocodeInProgress = false;
   let lastKnownPlaceName = "";
+  let headerLocationWatchId = null;
   const PLACE_STORAGE_KEY = "motari_last_known_place_v1";
+
+  function setLocationLabel(place, lastKnown = false) {
+    const label = $("location-name");
+    if (!label || !place) return;
+    const prefix = currentLanguage === "en"
+      ? (lastKnown ? "Last known location: " : "Your location: ")
+      : (lastKnown ? "Aho uheruka kugaragara: " : "Aho uri: ");
+    label.textContent = prefix + place;
+    label.setAttribute("aria-live", "polite");
+  }
 
   function loadSavedPlaceName() {
     try {
       const saved = localStorage.getItem(PLACE_STORAGE_KEY);
       if (saved) {
         lastKnownPlaceName = saved;
-        $("location-name").textContent = (currentLanguage === "en" ? "Last known location: " : "Aho uheruka kugaragara: ") + saved;
+        setLocationLabel(saved, true);
       }
     } catch (_) {}
   }
 
   async function updateLocationName(lat, lon) {
     const now = Date.now();
-    if (geocodeInProgress || now - lastGeocodeAt < 30000) return;
+    // Respect Nominatim's public service limits and avoid duplicate requests.
+    if (geocodeInProgress || now - lastGeocodeAt < 60000) return;
     geocodeInProgress = true;
-    const label = $("location-name");
-    const prefix = currentLanguage === "en" ? "Your location: " : "Aho uri: ";
+    lastGeocodeAt = now;
     try {
       const url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" +
         encodeURIComponent(lat) + "&lon=" + encodeURIComponent(lon) + "&zoom=18&addressdetails=1";
@@ -439,49 +448,64 @@
       if (!response.ok) throw new Error("Reverse geocoding unavailable");
       const data = await response.json();
       const a = data.address || {};
-      // Prefer Rwanda's administrative areas: cell (akagari), village (umudugudu), sector and district.
-      const parts = [
-        a.village, a.hamlet, a.neighbourhood, a.suburb, a.quarter,
-        a.city_district, a.road, a.residential, a.town, a.city,
-        a.municipality, a.county, a.state_district, a.state
-      ].filter((value, index, all) => value && all.indexOf(value) === index);
-      const place = parts.slice(0, 4).join(", ") || (data.display_name || "").split(",").slice(0, 4).join(", ");
+
+      // Prefer the smallest named area available, then larger administrative areas.
+      // Some Rwanda cell/village names are not present in OpenStreetMap data.
+      const keys = [
+        "village", "hamlet", "cell", "neighbourhood", "neighborhood",
+        "suburb", "quarter", "sector", "city_district", "district",
+        "county", "state_district", "town", "city", "municipality", "state"
+      ];
+      const parts = [];
+      for (const key of keys) {
+        const value = a[key];
+        if (value && !parts.some(part => part.toLowerCase() === String(value).toLowerCase())) {
+          parts.push(String(value));
+        }
+        if (parts.length >= 4) break;
+      }
+      const place = parts.join(", ") ||
+        (data.display_name || "").split(",").map(x => x.trim()).filter(Boolean).slice(0, 4).join(", ");
       if (!place) throw new Error("No place name returned");
+
       lastKnownPlaceName = place;
-      label.textContent = prefix + place;
+      setLocationLabel(place, false);
       try { localStorage.setItem(PLACE_STORAGE_KEY, place); } catch (_) {}
-      lastGeocodeAt = Date.now();
     } catch (error) {
       console.warn("MOTARI place-name lookup failed:", error);
-      // Keep the previous place name visible instead of replacing it with an error.
-      if (lastKnownPlaceName) {
-        label.textContent = (currentLanguage === "en" ? "Last known location: " : "Aho uheruka kugaragara: ") + lastKnownPlaceName;
-      } else {
-        label.textContent = currentLanguage === "en"
-          ? "Finding your place name…"
-          : "Turacyashaka izina ry'ahantu uri…";
-      }
+      // Never erase the last place name when GPS or the map service temporarily fails.
+      if (lastKnownPlaceName) setLocationLabel(lastKnownPlaceName, true);
+      else $("location-name").textContent = currentLanguage === "en"
+        ? "Finding your village, cell, sector and district…"
+        : "Turimo gushaka umudugudu, akagari, umurenge n'akarere…";
     } finally {
       geocodeInProgress = false;
     }
   }
 
   function locateHeaderPlace() {
-    const label = $("location-name");
     loadSavedPlaceName();
     if (!navigator.geolocation) {
-      if (!lastKnownPlaceName) label.textContent = currentLanguage === "en" ? "GPS is not supported by this browser." : "Iyi browser ntishyigikira GPS.";
+      if (!lastKnownPlaceName) $("location-name").textContent = currentLanguage === "en"
+        ? "GPS is not supported by this browser."
+        : "Iyi browser ntishyigikira GPS.";
       return;
     }
-    navigator.geolocation.getCurrentPosition(position => {
+
+    // Keep receiving GPS updates while this page is open, so the place name can
+    // refresh if the user moves. Failed lookups never clear the saved label.
+    if (headerLocationWatchId !== null) {
+      navigator.geolocation.clearWatch(headerLocationWatchId);
+    }
+    headerLocationWatchId = navigator.geolocation.watchPosition(position => {
       myLatitude = position.coords.latitude;
       myLongitude = position.coords.longitude;
       updateLocationName(myLatitude, myLongitude);
     }, error => {
       console.warn("MOTARI header GPS:", error.message);
-      if (!lastKnownPlaceName) label.textContent = currentLanguage === "en"
-        ? "Allow location access to show the place name."
-        : "Emera GPS kugira ngo hagaragare izina ry'ahantu uri.";
+      if (!lastKnownPlaceName) $("location-name").textContent = currentLanguage === "en"
+        ? "Allow location access to show your village, cell, sector and district."
+        : "Emera GPS kugira ngo hagaragare umudugudu, akagari, umurenge n'akarere.";
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 30000 });
   }
 
