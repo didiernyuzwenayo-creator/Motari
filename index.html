@@ -1169,13 +1169,18 @@
         deletion = currentProfile.role === "passenger"
           ? deletion.eq("passenger_id", currentUser.id)
           : deletion.eq("rider_id", currentUser.id);
-        const { error } = await deletion;
+        const { data: deletedRows, error } = await deletion.select("id");
         if (error) {
-          message("Ntibyashobotse gusiba urugendo. Reba uruhushya rwa DELETE muri Supabase. " + error.message);
+          message("Ntibyashobotse gusiba urugendo: " + error.message);
           remove.disabled = false;
           return;
         }
-        message("Urugendo rwasibwe.");
+        if (!deletedRows || deletedRows.length === 0) {
+          message("Urugendo ntirusibwe. Reba ko winjiye muri konti yarusabye cyangwa yarwemeye, wongere ugerageze.");
+          remove.disabled = false;
+          return;
+        }
+        message("Urugendo rwasibwe burundu.");
         await loadRideHistory();
       });
       row.appendChild(remove);
