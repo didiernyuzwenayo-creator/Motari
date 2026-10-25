@@ -274,6 +274,9 @@
   let motariMap = null;
   let myMapMarker = null;
   let riderWatchId = null;
+  let riderHeartbeatTimer = null;
+  let lastRiderLatitude = null;
+  let lastRiderLongitude = null;
   let riderPersistedAt = 0;
   let riderIsOnline = false;
   let otherRiderMarkers = new Map();
@@ -721,6 +724,8 @@
     if (riderWatchId !== null) {
       navigator.geolocation.clearWatch(riderWatchId);
       riderWatchId = null;
+      if (riderHeartbeatTimer) clearInterval(riderHeartbeatTimer);
+      riderHeartbeatTimer = null;
       riderIsOnline = false;
       client.from("rider_locations").update({ is_online: false, updated_at: new Date().toISOString() })
         .eq("rider_id", currentUser.id).then(({ error }) => {
@@ -735,6 +740,7 @@
     riderWatchId = navigator.geolocation.watchPosition(async position => {
       const latitude = position.coords.latitude;
       const longitude = position.coords.longitude;
+      lastRiderLatitude = latitude; lastRiderLongitude = longitude;
       myLatitude = latitude; myLongitude = longitude;
       const point = [latitude, longitude];
       if (motariMap) {
@@ -764,8 +770,26 @@
         : "GPS ntiyabonetse. Reba niba GPS ifunguye wongere ugerageze.");
       if (riderWatchId !== null) navigator.geolocation.clearWatch(riderWatchId);
       riderWatchId = null;
+      if (riderHeartbeatTimer) clearInterval(riderHeartbeatTimer);
+      riderHeartbeatTimer = null;
+      riderIsOnline = false;
+      if (currentUser) client.from("rider_locations").update({ is_online: false, updated_at: new Date().toISOString() }).eq("rider_id", currentUser.id);
       $("locationButton").textContent = "Sangiza MOTARI aho ndi";
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 });
+    // Refresh the online timestamp even when the rider is stationary and GPS emits no new position.
+    if (riderHeartbeatTimer) clearInterval(riderHeartbeatTimer);
+    riderHeartbeatTimer = setInterval(async () => {
+      if (!riderWatchId || !currentUser || currentProfile?.role !== "rider" ||
+          !Number.isFinite(lastRiderLatitude) || !Number.isFinite(lastRiderLongitude)) return;
+      const { error } = await client.from("rider_locations").upsert({
+        rider_id: currentUser.id,
+        latitude: lastRiderLatitude,
+        longitude: lastRiderLongitude,
+        updated_at: new Date().toISOString(),
+        is_online: true
+      }, { onConflict: "rider_id" });
+      if (error) console.warn("MOTARI online heartbeat failed:", error.message);
+    }, 30000);
   });
 
   $("requestButton").addEventListener("click", () => {
@@ -831,6 +855,8 @@
         navigator.geolocation.clearWatch(riderWatchId);
         riderWatchId = null;
       }
+      if (riderHeartbeatTimer) clearInterval(riderHeartbeatTimer);
+      riderHeartbeatTimer = null;
       if (currentUser && currentProfile?.role === "rider") {
         await client.from("rider_locations").update({ is_online: false, updated_at: new Date().toISOString() })
           .eq("rider_id", currentUser.id);
