@@ -216,7 +216,38 @@
     "Birategereje umumotari":"Waiting for a rider",
     "Umumotari yemeye urugendo":"A rider accepted the trip",
     "Urugendo rwarangiye":"Trip completed",
-    "Urugendo rwahagaritswe":"Trip cancelled"
+    "Urugendo rwahagaritswe":"Trip cancelled",
+    "Abamotari batari online muri aka gace":"Riders currently offline in this area",
+    "Turimo kureba abamotari bo hafi.":"Checking for nearby riders.",
+    "Turimo kubika aho uherereye kugira ngo abagenzi bashobore kukubona ku rutonde rw'abamotari batari online.":"Saving your location so passengers can find you in the offline riders list.",
+    "Aho uherereye habitswe. Ugaragara ku rutonde rw'abamotari batari online, utabaye online.":"Your location was saved. You appear in the offline riders list without being marked online.",
+    "GPS yabonetse ariko aho uherereye ntihabitswe. Reba uruhushya n'imiterere ya Supabase.":"GPS was found, but your location could not be saved. Check permissions and Supabase settings.",
+    "Winjiye muri MOTARI. Emerera GPS kuri telefone kugira ngo tubike aho uherereye ku rutonde rw'abamotari batari online.":"You are logged in. Allow GPS on your phone to save your location in the offline riders list.",
+    "Banza wemere GPS yawe kugira ngo tubone abamotari bo mu gace urimo.":"Allow GPS so we can find riders in your area.",
+    "Turimo gushaka abamotari baherutse kugaragara muri aka gace...":"Looking for riders recently seen in this area...",
+    "Nta mumotari wemejwe uraboneka muri sisitemu.":"No verified riders are currently available in the system.",
+    "Nta mumotari uzwi uherutse kugaragara muri kilometero 5 uvuye aho uri mu masaha 24 ashize.":"No riders with a saved location were found within 5 km in the past 24 hours.",
+    "Abamotari batari online ariko baherutse kugaragara muri kilometero 5. Aho baherukaga ni amakuru ashaje.":"Offline riders recently seen within 5 km. Their last known locations may be outdated.",
+    "Agace aherukagamo":"Last known area",
+    "Yaherukaga kugaragara hashize iminota ":"Last seen ",
+    "Yaherukaga kugaragara hashize amasaha ":"Last seen ",
+    "Wahisemo Ikinyarwanda.":"You selected Kinyarwanda.",
+    "Language changed to English.":"Language changed to English.",
+    "Konti y'umumotari iracyategereje kwemezwa n'umuyobozi. Nyuma yo kwemezwa, uzashobora gusangiza GPS no kugaragara ku bagenzi.":"Your rider account is awaiting administrator verification. After verification, you can share GPS and appear to passengers.",
+    "Konti y'umumotari iracyategereje kwemezwa n'umuyobozi. Ntushobora kugaragara ku bagenzi utaremezwa.":"Your rider account is awaiting administrator verification. You cannot appear to passengers until verified.",
+    "Wemeye urugendo. Hamagara umugenzi ukoresheje amakuru mwumvikanyeho.":"You accepted the ride. Contact the passenger using the details you agreed on.",
+    "Ntibyashobotse kwemera urugendo: ":"Could not accept the ride: ",
+    "Ntibyashobotse kurangiza urugendo: ":"Could not complete the ride: ",
+    "Ntibyashobotse guhagarika ubusabe: ":"Could not cancel the request: ",
+    "GPS yawe irimo gusangizwa MOTARI. Komeza gufungura uru rubuga kugira ngo ugume online.":"Your GPS is being shared with MOTARI. Keep this page open to stay online.",
+    "GPS yabonetse ariko ntiyabitswe: ":"GPS was found but could not be saved: ",
+    "Wanze GPS. Emerera Chrome gukoresha location.":"GPS permission was denied. Allow Chrome to access your location.",
+    "GPS ntiyabonetse. Reba niba GPS ifunguye wongere ugerageze.":"GPS could not be found. Check that GPS is enabled and try again.",
+    "Browser ya telefone yawe ntiyemera GPS.":"Your phone browser does not support GPS.",
+    "Injira muri konti y'umumotari kugira ngo usangize aho uherereye.":"Log in with a rider account to share your location.",
+    "Injira muri konti y'umugenzi kugira ngo usabe moto.":"Log in with a passenger account to request a ride.",
+    "Turimo gufata aho uherereye...":"Getting your location...",
+    "Emera GPS kuri telefone kugira ngo tubike aho uherereye ku rutonde rw'abamotari batari online.":"Allow GPS on your phone to save your location in the offline riders list."
   };
   function translateValue(value) {
     if (currentLanguage !== "en" || typeof value !== "string") return value;
@@ -333,10 +364,12 @@
       const data = await response.json();
       const a = data.address || {};
       const place = a.road || a.neighbourhood || a.suburb || a.village || a.town || a.city || a.county;
-      if (place) label.textContent = "Aho uri: " + place;
-      else label.textContent = "Aho uri: " + lat.toFixed(5) + ", " + lon.toFixed(5);
+      const prefix = currentLanguage === "en" ? "Your location: " : "Aho uri: ";
+      if (place) label.textContent = prefix + place;
+      else label.textContent = prefix + lat.toFixed(5) + ", " + lon.toFixed(5);
     } catch (_) {
-      label.textContent = "Aho uri: " + lat.toFixed(5) + ", " + lon.toFixed(5);
+      const prefix = currentLanguage === "en" ? "Your location: " : "Aho uri: ";
+      label.textContent = prefix + lat.toFixed(5) + ", " + lon.toFixed(5);
     }
   }
 
