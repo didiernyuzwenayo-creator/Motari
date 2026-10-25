@@ -568,7 +568,7 @@
       return;
     }
     if (!profiles || profiles.length === 0) {
-      $("offlineRidersStatus").textContent = "Nta mumotari wemejwe uraboneka muri sisitemu.";
+      $("offlineRidersStatus").textContent = currentLanguage === "en" ? "No riders have saved a recent location yet." : "Nta mumotari urabika aho aherereye muri sisitemu.";
       return;
     }
 
