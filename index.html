@@ -1476,7 +1476,14 @@
       return;
     }
 
-    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        // Require users to log in again whenever the page is reopened or refreshed.
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: true
+      }
+    });
     showAuth();
 
     try {
