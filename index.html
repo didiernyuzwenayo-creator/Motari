@@ -607,10 +607,17 @@
     }
     nearby.forEach(item => {
       const ageMinutes = Math.max(1, Math.round(item.ageMs / 60000));
-      const ageText = item.ageMs < 60 * 60000
-        ? "Yaherukaga kugaragara hashize iminota " + ageMinutes
-        : "Yaherukaga kugaragara hashize amasaha " + Math.max(1, Math.round(item.ageMs / 3600000));
-      addContactCard(box, item.profile, item.distance, "OFFLINE • " + ageText + " • Agace aherukagamo");
+      const ageText = currentLanguage === "en"
+        ? (item.ageMs < 60 * 60000
+          ? "Last seen " + ageMinutes + " minute(s) ago"
+          : "Last seen " + Math.max(1, Math.round(item.ageMs / 3600000)) + " hour(s) ago")
+        : (item.ageMs < 60 * 60000
+          ? "Yaherukaga kugaragara hashize iminota " + ageMinutes
+          : "Yaherukaga kugaragara hashize amasaha " + Math.max(1, Math.round(item.ageMs / 3600000)));
+      const offlineDescription = currentLanguage === "en"
+        ? "OFFLINE • " + ageText + " • Last known area"
+        : "OFFLINE • " + ageText + " • Agace aherukagamo";
+      addContactCard(box, item.profile, item.distance, offlineDescription);
     });
     $("offlineRidersStatus").textContent = "Abamotari batari online ariko baherutse kugaragara muri kilometero 5. Aho baherukaga ni amakuru ashaje.";
   }
