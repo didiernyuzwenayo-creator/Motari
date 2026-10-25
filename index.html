@@ -315,6 +315,27 @@
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "&copy; OpenStreetMap" }).addTo(motariMap);
     setTimeout(() => motariMap.invalidateSize(), 250);
   }
+  let lastGeocodeAt = 0;
+  async function updateLocationName(lat, lon) {
+    const now = Date.now();
+    if (now - lastGeocodeAt < 30000) return;
+    lastGeocodeAt = now;
+    const label = $("location-name");
+    try {
+      const url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=" +
+        encodeURIComponent(lat) + "&lon=" + encodeURIComponent(lon) + "&zoom=16";
+      const response = await fetch(url, { headers: { "Accept": "application/json" } });
+      if (!response.ok) throw new Error("Reverse geocoding unavailable");
+      const data = await response.json();
+      const a = data.address || {};
+      const place = a.road || a.neighbourhood || a.suburb || a.village || a.town || a.city || a.county;
+      if (place) label.textContent = "Aho uri: " + place;
+      else label.textContent = "Aho uri: " + lat.toFixed(5) + ", " + lon.toFixed(5);
+    } catch (_) {
+      label.textContent = "Aho uri: " + lat.toFixed(5) + ", " + lon.toFixed(5);
+    }
+  }
+
   function locateOnMap() {
     initMotariMap();
     if (!navigator.geolocation) { $("mapStatus").textContent = "GPS ntiyemewe kuri iyi browser."; return; }
@@ -326,7 +347,7 @@
       if (myMapMarker) myMapMarker.setLatLng([lat, lon]);
       else myMapMarker = L.marker([lat, lon]).addTo(motariMap).bindPopup("Aho uri");
       motariMap.setView([lat, lon], 15);
-      $("location-name").textContent = "Aho uri: " + lat.toFixed(5) + ", " + lon.toFixed(5);
+      updateLocationName(lat, lon);
       $("mapStatus").textContent = "Aho uri hagaragaye ku ikarita.";
     }, () => { $("mapStatus").textContent = "Emera GPS kuri telefone, wongere ugerageze."; }, { enableHighAccuracy:true, timeout:15000, maximumAge:10000 });
   }
@@ -340,6 +361,9 @@
 
     $("riderTools").classList.toggle("hidden", profile.role !== "rider");
     $("passengerTools").classList.toggle("hidden", profile.role !== "passenger");
+    if (profile.role === "rider" && profile.rider_verified !== true) {
+      message("Konti y'umumotari iracyategereje kwemezwa n'umuyobozi. Nyuma yo kwemezwa, uzashobora gusangiza GPS no kugaragara ku bagenzi.");
+    }
     initMotariMap();
     locateOnMap();
   }
@@ -347,7 +371,7 @@
   async function ensureProfile(user) {
     const { data: profile, error } = await client
       .from("profiles")
-      .select("id, full_name, phone, role")
+      .select("id, full_name, phone, role, rider_verified")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -384,7 +408,7 @@
         phone: phone || null,
         role
       })
-      .select("id, full_name, phone, role")
+      .select("id, full_name, phone, role, rider_verified")
       .single();
 
     if (insertError) {
@@ -634,7 +658,9 @@
         email,
         password,
         options: {
-          data: { full_name: fullName, phone, role }
+          data: { full_name: fullName, phone, role },
+          // Return to this GitHub Pages app after email confirmation (not the account root).
+          emailRedirectTo: new URL("./", window.location.href).href
         }
       });
 
@@ -684,6 +710,10 @@
       message("Injira muri konti y'umumotari kugira ngo usangize aho uherereye.");
       return;
     }
+    if (currentProfile.rider_verified !== true) {
+      message("Konti y'umumotari iracyategereje kwemezwa n'umuyobozi. Ntushobora kugaragara ku bagenzi utaremezwa.");
+      return;
+    }
     if (!navigator.geolocation) {
       message("Browser ya telefone yawe ntiyemera GPS.");
       return;
@@ -712,7 +742,7 @@
         else myMapMarker = L.marker(point).addTo(motariMap).bindPopup("Aho uri");
         motariMap.setView(point, 15);
       }
-      $("location-name").textContent = "Aho uherereye: " + latitude.toFixed(5) + ", " + longitude.toFixed(5);
+      updateLocationName(latitude, longitude);
       riderIsOnline = true;
       const now = Date.now();
       if (now - riderPersistedAt < 10000) return;
