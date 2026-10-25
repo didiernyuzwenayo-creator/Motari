@@ -419,6 +419,12 @@
   let lastKnownAdmin = null;
   let headerLocationWatchId = null;
   let lastAdminLookupKey = "";
+  let pendingAdminKey = "";
+  let pendingAdminCount = 0;
+  let acceptedAdminLatitude = null;
+  let acceptedAdminLongitude = null;
+  const ADMIN_CONFIRMATIONS_REQUIRED = 2;
+  const ADMIN_MOVE_THRESHOLD_METERS = 100;
   let lastSectorKey = "";
   let adminAreaLayer = null;
   const PLACE_STORAGE_KEY = "motari_last_known_place_v1";
@@ -454,16 +460,76 @@
     return parts.join(" · ");
   }
 
-  function saveAdminPlace(admin) {
+  function saveAdminPlace(admin, lat, lon) {
     lastKnownAdmin = admin;
     lastKnownPlaceName = formatAdminPlace(admin);
+    acceptedAdminLatitude = lat;
+    acceptedAdminLongitude = lon;
     if (lastKnownPlaceName) {
       setLocationLabel(lastKnownPlaceName, false);
       try {
         localStorage.setItem(PLACE_STORAGE_KEY, lastKnownPlaceName);
         localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(admin));
+        localStorage.setItem("motari_last_known_coords_v1", JSON.stringify({ lat, lon }));
       } catch (_) {}
     }
+  }
+
+  function distanceMeters(lat1, lon1, lat2, lon2) {
+    const toRad = value => value * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function sameAdminArea(a, b) {
+    if (!a || !b) return false;
+    return ["province", "district", "sector", "cell", "village"]
+      .every(key => String(a[key] || "").trim().toLowerCase() === String(b[key] || "").trim().toLowerCase());
+  }
+
+  function acceptAdminCandidate(admin, lat, lon) {
+    // First accurate result can be shown immediately.
+    if (!lastKnownAdmin) {
+      pendingAdminKey = "";
+      pendingAdminCount = 0;
+      saveAdminPlace(admin, lat, lon);
+      return true;
+    }
+
+    // Small GPS drift must not replace the user's known village/cell.
+    const movedMeters = acceptedAdminLatitude == null || acceptedAdminLongitude == null
+      ? Infinity
+      : distanceMeters(acceptedAdminLatitude, acceptedAdminLongitude, lat, lon);
+
+    if (sameAdminArea(admin, lastKnownAdmin)) {
+      pendingAdminKey = "";
+      pendingAdminCount = 0;
+      return false;
+    }
+
+    if (movedMeters < ADMIN_MOVE_THRESHOLD_METERS) {
+      pendingAdminKey = "";
+      pendingAdminCount = 0;
+      return false;
+    }
+
+    const candidateKey = ["province", "district", "sector", "cell", "village"]
+      .map(key => String(admin[key] || "").trim().toLowerCase()).join("|");
+    if (candidateKey === pendingAdminKey) pendingAdminCount += 1;
+    else {
+      pendingAdminKey = candidateKey;
+      pendingAdminCount = 1;
+    }
+
+    if (pendingAdminCount < ADMIN_CONFIRMATIONS_REQUIRED) return false;
+
+    pendingAdminKey = "";
+    pendingAdminCount = 0;
+    saveAdminPlace(admin, lat, lon);
+    return true;
   }
 
   function loadSavedPlaceName() {
@@ -477,6 +543,14 @@
         }
       }
       if (!lastKnownPlaceName) lastKnownPlaceName = localStorage.getItem(PLACE_STORAGE_KEY) || "";
+      const savedCoords = localStorage.getItem("motari_last_known_coords_v1");
+      if (savedCoords) {
+        const coords = JSON.parse(savedCoords);
+        if (Number.isFinite(coords.lat) && Number.isFinite(coords.lon)) {
+          acceptedAdminLatitude = coords.lat;
+          acceptedAdminLongitude = coords.lon;
+        }
+      }
       if (lastKnownPlaceName) setLocationLabel(lastKnownPlaceName, true);
     } catch (_) {}
   }
@@ -578,16 +652,19 @@
     try {
       const admin = await queryAdminArea(lat, lon);
       if (admin && (admin.village || admin.cell || admin.sector || admin.district)) {
-        saveAdminPlace(admin);
-        const sectorKey = [admin.province, admin.district, admin.sector].join("|");
-        if (drawMap) await drawSectorBoundary(lat, lon, sectorKey);
+        acceptAdminCandidate(admin, lat, lon);
+        // Keep the previously confirmed area visible while GPS is noisy.
+        if (lastKnownAdmin) {
+          const sectorKey = [lastKnownAdmin.province, lastKnownAdmin.district, lastKnownAdmin.sector].join("|");
+          if (drawMap) await drawSectorBoundary(acceptedAdminLatitude ?? lat, acceptedAdminLongitude ?? lon, sectorKey);
+        }
         return;
       }
       throw new Error("No administrative area matched these coordinates");
     } catch (error) {
       console.warn("MOTARI administrative area lookup:", error.message);
-      // Fall back to OpenStreetMap only if the official Rwanda boundaries service fails.
-      await updateLocationNameFallback(lat, lon);
+      // Never replace a confirmed Rwanda administrative area with a less precise fallback result.
+      if (!lastKnownAdmin) await updateLocationNameFallback(lat, lon);
     }
   }
 
