@@ -506,34 +506,68 @@
     };
   }
 
+  let cellAreaLayer = null;
+
+  async function fetchBoundaryLayer(layerId, lat, lon, outFields) {
+    const params = new URLSearchParams({
+      geometry: JSON.stringify({ x: lon, y: lat, spatialReference: { wkid: 4326 } }),
+      geometryType: "esriGeometryPoint",
+      inSR: "4326",
+      spatialRel: "esriSpatialRelIntersects",
+      outFields,
+      returnGeometry: "true",
+      outSR: "4326",
+      f: "geojson"
+    });
+    const response = await fetch(ADMIN_MAP_URL + "/" + layerId + "/query?" + params.toString(), {
+      headers: { "Accept": "application/geo+json, application/json" }
+    });
+    if (!response.ok) throw new Error("Administrative boundary unavailable (layer " + layerId + ")");
+    const geo = await response.json();
+    if (geo.error) throw new Error(geo.error.message || "Boundary query failed");
+    return geo;
+  }
+
   async function drawSectorBoundary(lat, lon, sectorKey) {
-    if (!motariMap || !window.L || !sectorKey || sectorKey === lastSectorKey) return;
+    if (!motariMap || !window.L || !sectorKey) return;
     try {
-      const params = new URLSearchParams({
-        geometry: JSON.stringify({ x: lon, y: lat, spatialReference: { wkid: 4326 } }),
-        geometryType: "esriGeometryPoint",
-        inSR: "4326",
-        spatialRel: "esriSpatialRelIntersects",
-        outFields: "sector,district,province",
-        returnGeometry: "true",
-        outSR: "4326",
-        f: "geojson"
-      });
-      const response = await fetch(ADMIN_MAP_URL + "/3/query?" + params.toString(), { headers: { "Accept": "application/geo+json, application/json" } });
-      if (!response.ok) throw new Error("Sector boundary unavailable");
-      const geo = await response.json();
-      if (!geo.features || !geo.features.length) return;
-      if (adminAreaLayer) motariMap.removeLayer(adminAreaLayer);
-      adminAreaLayer = L.geoJSON(geo, {
-        style: { color: "#087443", weight: 3, opacity: 0.95, fillColor: "#25a66a", fillOpacity: 0.12 }
-      }).addTo(motariMap);
-      lastSectorKey = sectorKey;
-      const bounds = adminAreaLayer.getBounds();
-      if (bounds.isValid()) motariMap.fitBounds(bounds, { padding: [18, 18], maxZoom: 15 });
+      // The sector boundary is layer 3; the cell boundary inside it is layer 0.
+      const [sectorGeo, cellGeo] = await Promise.all([
+        fetchBoundaryLayer(3, lat, lon, "sector,district,province"),
+        fetchBoundaryLayer(0, lat, lon, "cell,sector,district,province")
+      ]);
+
+      if (sectorGeo.features && sectorGeo.features.length) {
+        if (adminAreaLayer) motariMap.removeLayer(adminAreaLayer);
+        adminAreaLayer = L.geoJSON(sectorGeo, {
+          style: { color: "#087443", weight: 3, opacity: 1, fillColor: "#25a66a", fillOpacity: 0.10 }
+        }).addTo(motariMap);
+      }
+
+      if (cellGeo.features && cellGeo.features.length) {
+        if (cellAreaLayer) motariMap.removeLayer(cellAreaLayer);
+        cellAreaLayer = L.geoJSON(cellGeo, {
+          style: { color: "#e07816", weight: 3, opacity: 1, fillColor: "#f5a742", fillOpacity: 0.16, dashArray: "6 4" }
+        }).addTo(motariMap);
+      }
+
+      if (sectorGeo.features && sectorGeo.features.length) {
+        lastSectorKey = sectorKey;
+        const bounds = adminAreaLayer.getBounds();
+        if (bounds.isValid()) motariMap.fitBounds(bounds, { padding: [18, 18], maxZoom: 15 });
+      } else if (cellAreaLayer && cellAreaLayer.getBounds().isValid()) {
+        motariMap.fitBounds(cellAreaLayer.getBounds(), { padding: [18, 18], maxZoom: 16 });
+      }
       if (myMapMarker) myMapMarker.setZIndexOffset(1000);
+      const admin = lastKnownAdmin || {};
+      const cellName = admin.cell ? "Akagari: " + admin.cell : "Akagari ntikamenyekanye";
+      const sectorName = admin.sector ? "Umurenge: " + admin.sector : "Umurenge nturamenyekana";
+      $("mapStatus").textContent = (sectorGeo.features && sectorGeo.features.length)
+        ? "Ikarita y'umurenge wawe iragaragara. " + sectorName + " · " + cellName + ". Umurenge ugaragazwa n'umupaka w'icyatsi; akagari n'umupaka w'icunga."
+        : "Amazina y'aho uri: " + sectorName + " · " + cellName + ". Imipaka nyayo ntibonetse kuri serivisi y'ikarita.";
     } catch (error) {
-      console.warn("MOTARI sector boundary:", error.message);
-      // Keep the normal map usable even when the official boundary service is offline.
+      console.warn("MOTARI sector/cell boundary:", error.message);
+      $("mapStatus").textContent = "Ikarita isanzwe irahari, ariko imipaka y'umurenge n'akagari ntiyabonetse. Ongera ugerageze nyuma.";
     }
   }
 
