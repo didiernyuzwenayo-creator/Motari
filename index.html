@@ -247,7 +247,19 @@
     "Injira muri konti y'umumotari kugira ngo usangize aho uherereye.":"Log in with a rider account to share your location.",
     "Injira muri konti y'umugenzi kugira ngo usabe moto.":"Log in with a passenger account to request a ride.",
     "Turimo gufata aho uherereye...":"Getting your location...",
-    "Emera GPS kuri telefone kugira ngo tubike aho uherereye ku rutonde rw'abamotari batari online.":"Allow GPS on your phone to save your location in the offline riders list."
+    "Emera GPS kuri telefone kugira ngo tubike aho uherereye ku rutonde rw'abamotari batari online.":"Allow GPS on your phone to save your location in the offline riders list.",
+    "Aho baherukaga kugaragara ni amakuru aheruka kubikwa, si GPS yabo y'ubu.":"Their last-seen location is the most recently saved location, not their current GPS position.",
+    "Aho uri hagaragaye ku ikarita.":"Your location is shown on the map.",
+    "Turimo gushaka aho uherereye...":"Finding your location...",
+    "Emera GPS kuri telefone, wongere ugerageze.":"Allow GPS on your phone and try again.",
+    "Ikosa: ":"Error: ",
+    "Ntitwashoboye kubona urutonde rw'abamotari: ":"Could not load the rider list: ",
+    "Ntitwashoboye kubona aho baherukaga kugaragara: ":"Could not load riders' last known locations: ",
+    "Ikosa mu gushaka abamotari: ":"Error finding riders: ",
+    "Ikosa mu gushaka abagenzi: ":"Error finding passengers: ",
+    "Ntitwashoboye kubona nimero z'abamotari: ":"Could not load rider phone numbers: ",
+    "Ubusabe burahari ariko nimero z'abagenzi ntizafungutse: ":"Requests are available, but passenger phone numbers could not be loaded: ",
+    "Ntibyashobotse guhagarika ubusabe.":"Could not cancel the request."
   };
   function translateValue(value) {
     if (currentLanguage !== "en" || typeof value !== "string") return value;
@@ -261,7 +273,7 @@
     document.documentElement.lang = currentLanguage;
     const select = document.getElementById("languageSelect");
     if (select && select.value !== currentLanguage) select.value = currentLanguage;
-    document.querySelectorAll("label, h2, h3, p, button, option, footer p").forEach(el => {
+    document.querySelectorAll("label, h2, h3, p, button, option, small, footer p").forEach(el => {
       if (el.closest("#languageChooser") || el.id === "message") return;
       if (!el.dataset.rwText) el.dataset.rwText = el.textContent;
       const original = el.dataset.rwText;
@@ -537,15 +549,15 @@
     const card=document.createElement("div");
     card.style.cssText="padding:12px;margin:8px 0;border:1px solid #d9e4df;border-radius:10px";
     const name=document.createElement("strong");
-    name.textContent=profile.full_name || (profile.role==="rider"?"Umumotari":"Umugenzi");
+    name.textContent=profile.full_name || (profile.role==="rider"?(currentLanguage==="en"?"Rider":"Umumotari"):(currentLanguage==="en"?"Passenger":"Umugenzi"));
     card.appendChild(name);
     const detail=document.createElement("p");
     detail.textContent=description+(Number.isFinite(distance)?" • "+distance.toFixed(1)+" km":"");
     card.appendChild(detail);
     if(profile.phone) {
-      const phone=document.createElement("p"); phone.textContent="Telefone: "+profile.phone; card.appendChild(phone);
+      const phone=document.createElement("p"); phone.textContent=(currentLanguage==="en"?"Phone: ":"Telefone: ")+profile.phone; card.appendChild(phone);
       const call=document.createElement("a"); call.href="tel:"+profile.phone.replace(/[^+0-9]/g,"");
-      call.textContent="Hamagara"; call.style.cssText="display:inline-block;padding:8px 12px;background:#087443;color:white;border-radius:7px;text-decoration:none"; card.appendChild(call);
+      call.textContent=currentLanguage==="en"?"Call":"Hamagara"; call.style.cssText="display:inline-block;padding:8px 12px;background:#087443;color:white;border-radius:7px;text-decoration:none"; card.appendChild(call);
     } else { const no=document.createElement("p"); no.textContent="Nta nimero ya telefone yashyizwe kuri konti."; card.appendChild(no); }
     container.appendChild(card);
   }
