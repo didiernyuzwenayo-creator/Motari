@@ -26,6 +26,8 @@
     #message { padding: 12px; border-radius: 8px; overflow-wrap: anywhere; background: #edf7f0; }
     #requests p { padding: 10px; background: #f5f7f5; border-radius: 7px; overflow-wrap: anywhere; }
     footer { text-align: center; padding: 20px; color: #555; }
+    /* Keep the location label hidden until a user logs in. */
+    #location-name { display: none; }
   </style>
 </head>
 <body>
@@ -1223,6 +1225,7 @@
     try {
       const profile = await ensureProfile(user);
       showApp(profile);
+      $("location-name").style.display = "block";
       locateHeaderPlace();
       message("Winjiye muri MOTARI neza.");
       startLiveUpdates();
