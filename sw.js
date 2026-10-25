@@ -1,4 +1,4 @@
-const CACHE = "motari-v10";
+const CACHE = "motari-v11";
 const CORE = ["./", "./index.html", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", event => {
