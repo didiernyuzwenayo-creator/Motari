@@ -53,40 +53,53 @@
   </div>
 
   <section id="authSection" class="card">
-    <h2>Fungura konti</h2>
-    <form id="signupForm">
-      <label for="fullName">Amazina yawe</label>
-      <input id="fullName" required autocomplete="name" placeholder="Andika amazina yawe">
+    <div id="loginPane">
+      <h2 id="loginTitle">Injira muri MOTARI</h2>
+      <form id="loginForm">
+        <label for="loginEmail">Email</label>
+        <input id="loginEmail" type="email" autocomplete="email" required>
 
-      <label for="phone">Numero ya telefone</label>
-      <input id="phone" required type="tel" autocomplete="tel" placeholder="Urugero: 07XXXXXXXX">
+        <label for="loginPassword">Ijambo ry'ibanga</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" required>
 
-      <label for="role">Hitamo ubwoko bwa konti</label>
-      <select id="role" required>
-        <option value="passenger">Umugenzi</option>
-        <option value="rider">Umumotari</option>
-      </select>
+        <button id="loginButton" type="submit">Injira</button>
+      </form>
+      <hr>
+      <p id="noAccountText">Nta konti urafungura?</p>
+      <button id="showSignupButton" type="button" class="secondary">Iyandikishe hano</button>
+    </div>
 
-      <label for="signupEmail">Email</label>
-      <input id="signupEmail" type="email" autocomplete="email" required placeholder="Email yawe">
+    <div id="signupPane" class="hidden">
+      <h2>Fungura konti nshya</h2>
+      <form id="signupForm">
+        <label for="fullName">Amazina yawe</label>
+        <input id="fullName" required autocomplete="name" placeholder="Andika amazina yawe">
 
-      <label for="signupPassword">Ijambo ry'ibanga</label>
-      <input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="Nibura inyuguti 8">
+        <label for="phone">Numero ya telefone</label>
+        <input id="phone" required type="tel" autocomplete="tel" placeholder="Urugero: 07XXXXXXXX">
 
-      <button id="signupButton" type="submit">Iyandikishe</button>
-    </form>
+        <label for="role">Hitamo ubwoko bwa konti</label>
+        <select id="role" required>
+          <option value="passenger">Umugenzi</option>
+          <option value="rider">Umumotari</option>
+        </select>
 
-    <hr>
-    <h2>Usanzwe ufite konti?</h2>
-    <form id="loginForm">
-      <label for="loginEmail">Email</label>
-      <input id="loginEmail" type="email" autocomplete="email" required>
+        <label for="signupEmail">Email</label>
+        <input id="signupEmail" type="email" autocomplete="email" required placeholder="Email yawe">
 
-      <label for="loginPassword">Ijambo ry'ibanga</label>
-      <input id="loginPassword" type="password" autocomplete="current-password" required>
+        <label for="signupPassword">Ijambo ry'ibanga</label>
+        <input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="Nibura inyuguti 8">
 
-      <button id="loginButton" type="submit">Injira</button>
-    </form>
+        <button id="signupButton" type="submit">Iyandikishe</button>
+      </form>
+      <button id="backToLoginButton" type="button" class="secondary">Subira ku kwinjira</button>
+    </div>
+
+    <div id="confirmationPane" class="hidden">
+      <h2 id="confirmationTitle">Emeza email yawe</h2>
+      <p id="confirmationMessage">Twakoherereje email yo kwemeza konti. Fungura email yawe ukande ku murongo wo kwemeza.</p>
+      <button id="confirmationBackToLoginButton" type="button" class="secondary">Subira ku kwinjira</button>
+    </div>
   </section>
 
   <section id="appSection" class="card hidden">
@@ -354,6 +367,32 @@
   function showAuth() {
     $("authSection").classList.remove("hidden");
     $("appSection").classList.add("hidden");
+    $("loginPane").classList.remove("hidden");
+    $("signupPane").classList.add("hidden");
+    $("confirmationPane").classList.add("hidden");
+  }
+
+  function showSignupPane() {
+    $("loginPane").classList.add("hidden");
+    $("signupPane").classList.remove("hidden");
+    $("confirmationPane").classList.add("hidden");
+    message(currentLanguage === "en" ? "Create your MOTARI account." : "Fungura konti yawe ya MOTARI.");
+  }
+
+  function showLoginPane() {
+    $("loginPane").classList.remove("hidden");
+    $("signupPane").classList.add("hidden");
+    $("confirmationPane").classList.add("hidden");
+  }
+
+  function showConfirmationPane(email) {
+    $("loginPane").classList.add("hidden");
+    $("signupPane").classList.add("hidden");
+    $("confirmationPane").classList.remove("hidden");
+    $("confirmationMessage").textContent = currentLanguage === "en"
+      ? "Your account registration has started. Open " + email + " and click the confirmation link. MOTARI will open after confirmation. If you are returned here and are not signed in automatically, log in with your email and password."
+      : "Kwiyandikisha byatangiye. Fungura email yawe (" + email + ") ukande ku murongo wo kwemeza konti. Nyuma yo kwemeza, MOTARI izafunguka. Nugaruka kuri uru rupapuro utinjiye mu buryo bwikora, injira ukoresheje email n'ijambo ry'ibanga.";
+    message(currentLanguage === "en" ? "Please confirm your email address." : "Nyamuneka emeza email yawe.");
   }
 
   function initMotariMap() {
@@ -827,10 +866,7 @@
       if (data.session && data.user) {
         await openApp(data.user);
       } else {
-        message(
-          "Konti yatangiye gukorwa. Reba email yawe wemeze konti, " +
-          "hanyuma winjire ukoresheje email n'ijambo ry'ibanga."
-        );
+        showConfirmationPane(email);
       }
     } catch (error) {
       showError(error);
@@ -838,6 +874,10 @@
       setBusy("signupButton", false);
     }
   });
+
+  $("showSignupButton").addEventListener("click", showSignupPane);
+  $("backToLoginButton").addEventListener("click", showLoginPane);
+  $("confirmationBackToLoginButton").addEventListener("click", showLoginPane);
 
   $("loginForm").addEventListener("submit", async event => {
     event.preventDefault();
