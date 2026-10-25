@@ -539,7 +539,7 @@
 
   async function updateAdministrativeArea(lat, lon, drawMap = true) {
     const lookupKey = lat.toFixed(3) + "," + lon.toFixed(3);
-    if (lookupKey === lastAdminLookupKey) return;
+    if (lookupKey === lastAdminLookupKey) { if (drawMap && lastKnownAdmin) drawSectorBoundary(lat, lon, [lastKnownAdmin.province, lastKnownAdmin.district, lastKnownAdmin.sector].join("|")); return; }
     lastAdminLookupKey = lookupKey;
     try {
       const admin = await queryAdminArea(lat, lon);
