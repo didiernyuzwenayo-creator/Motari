@@ -144,6 +144,13 @@
   const languageKey = "motari-language";
   let currentLanguage = localStorage.getItem(languageKey) === "en" ? "en" : "rw";
   const translations = {
+    "Injira muri MOTARI":"Log in to MOTARI",
+    "Nta konti urafungura?":"Don't have an account yet?",
+    "Iyandikishe hano":"Sign up here",
+    "Fungura konti nshya":"Create a new account",
+    "Subira ku kwinjira":"Back to log in",
+    "Emeza email yawe":"Confirm your email",
+    "Twakoherereje email yo kwemeza konti. Fungura email yawe ukande ku murongo wo kwemeza.":"We sent you an account confirmation email. Open it and click the confirmation link.",
     "Turimo kumenya aho uherereye...":"Finding your location...",
     "Huza n'umumotari uri hafi yawe!":"Connect with a nearby motorcycle taxi!",
     "Murakaza neza kuri MOTARI":"Welcome to MOTARI",
@@ -316,6 +323,9 @@
       currentLanguage = select.value === "en" ? "en" : "rw";
       localStorage.setItem(languageKey, currentLanguage);
       applyLanguage();
+      if (!$("confirmationPane").classList.contains("hidden")) {
+        showConfirmationPane($("signupEmail").value.trim());
+      }
       if (currentLanguage === "en") message("Language changed to English.");
       else message("Wahisemo Ikinyarwanda.");
     });
