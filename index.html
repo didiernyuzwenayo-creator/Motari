@@ -251,7 +251,7 @@
     "Winjiye muri MOTARI. Emerera GPS kuri telefone kugira ngo tubike aho uherereye ku rutonde rw'abamotari batari online.":"You are logged in. Allow GPS on your phone to save your location in the offline riders list.",
     "Banza wemere GPS yawe kugira ngo tubone abamotari bo mu gace urimo.":"Allow GPS so we can find riders in your area.",
     "Turimo gushaka abamotari baherutse kugaragara muri aka gace...":"Looking for riders recently seen in this area...",
-    "Nta mumotari wemejwe uraboneka muri sisitemu.":"No verified riders are currently available in the system.",
+    "Nta mumotari wemejwe uraboneka muri sisitemu.":"No riders are currently available in the system.",
     "Nta mumotari uzwi uherutse kugaragara muri kilometero 5 uvuye aho uri mu masaha 24 ashize.":"No riders with a saved location were found within 5 km in the past 24 hours.",
     "Abamotari batari online ariko baherutse kugaragara muri kilometero 5. Aho baherukaga ni amakuru ashaje.":"Offline riders recently seen within 5 km. Their last known locations may be outdated.",
     "Agace aherukagamo":"Last known area",
@@ -762,6 +762,10 @@
       motariMap.setView([lat, lon], 15);
       updateAdministrativeArea(lat, lon, true);
       $("mapStatus").textContent = "GPS ibonetse. Turimo kwerekana imipaka y'umurenge wawe aho iboneka.";
+      // Refresh nearby lists after GPS arrives; the first load may happen before coordinates.
+      loadNearbyContacts();
+      loadNearbyOfflineRiders();
+      loadRiderLocations();
     }, () => { $("mapStatus").textContent = "Emera GPS kuri telefone, wongere ugerageze."; }, { enableHighAccuracy:true, timeout:15000, maximumAge:10000 });
   }
 
@@ -808,7 +812,9 @@
         message("GPS yabonetse ariko aho uherereye ntihabitswe. Reba uruhushya n'imiterere ya Supabase.");
       } else {
         message("Aho uherereye habitswe. Ugaragara ku rutonde rw'abamotari batari online, utabaye online.");
-        loadNearbyOfflineRiders();
+        // Refresh nearby passengers now that this rider's GPS coordinates are known.
+        loadNearbyContacts();
+        loadRiderLocations();
       }
     }, error => {
       console.warn("MOTARI login GPS unavailable:", error.message);
@@ -819,7 +825,7 @@
   async function ensureProfile(user) {
     const { data: profile, error } = await client
       .from("profiles")
-      .select("id, full_name, phone, role, rider_verified")
+      .select("id, full_name, phone, role")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -856,7 +862,7 @@
         phone: phone || null,
         role
       })
-      .select("id, full_name, phone, role, rider_verified")
+      .select("id, full_name, phone, role")
       .single();
 
     if (insertError) {
@@ -1002,6 +1008,12 @@
   async function loadNearbyContacts() {
     if(!currentUser || !currentProfile) return;
     const box=$("nearbyContacts"); if(!box) return; box.replaceChildren();
+    if (myLatitude == null || myLongitude == null) {
+      $("nearbyStatus").textContent = currentLanguage === "en"
+        ? "Allow GPS to find people within 5 km of you."
+        : "Emera GPS kugira ngo tubone abantu bari muri kilometero 5 uvuye aho uri.";
+      return;
+    }
     const passenger=currentProfile.role==="passenger";
     $("nearbyTitle").textContent=passenger?"Abamotari bakwegereye":"Abagenzi bakwegereye";
     $("nearbyStatus").textContent="Turimo gushaka abantu bakwegereye...";
@@ -1012,7 +1024,7 @@
       const {data:profiles,error:pe}=await client.from("profiles").select("id,full_name,phone,role").in("id",locations.map(x=>x.rider_id)).eq("role","rider");
       if(pe){$("nearbyStatus").textContent="Ntitwashoboye kubona nimero z'abamotari: "+pe.message;return;}
       const byId=new Map((profiles||[]).map(x=>[x.id,x]));
-      const list=locations.map(loc=>{const profile=byId.get(loc.rider_id);if(!profile)return null;return {profile,distance:myLatitude==null?Infinity:distanceKm(myLatitude,myLongitude,+loc.latitude,+loc.longitude)}}).filter(Boolean).sort((a,b)=>a.distance-b.distance);
+      const list=locations.map(loc=>{const profile=byId.get(loc.rider_id);if(!profile)return null;return {profile,distance:distanceKm(myLatitude,myLongitude,+loc.latitude,+loc.longitude)}}).filter(x=>x && Number.isFinite(x.distance) && x.distance <= 5).sort((a,b)=>a.distance-b.distance);
       list.forEach(x=>addContactCard(box,x.profile,x.distance,"Umumotari uri online"));
       $("nearbyStatus").textContent=list.length?"Urutonde rw'abamotari bari online, uhereye ku wegereye.":"Nta mumotari wabonetse.";
     } else {
@@ -1023,7 +1035,7 @@
       const {data:profiles,error:pe}=await client.from("profiles").select("id,full_name,phone,role").in("id",ids).eq("role","passenger");
       if(pe){$("nearbyStatus").textContent="Ubusabe burahari ariko nimero z'abagenzi ntizafungutse: "+pe.message;return;}
       const byId=new Map((profiles||[]).map(x=>[x.id,x]));
-      const list=requests.map(req=>{const profile=byId.get(req.passenger_id);if(!profile)return null;return {profile,req,distance:myLatitude==null?Infinity:distanceKm(myLatitude,myLongitude,+req.pickup_latitude,+req.pickup_longitude)}}).filter(Boolean).sort((a,b)=>a.distance-b.distance);
+      const list=requests.map(req=>{const profile=byId.get(req.passenger_id);if(!profile)return null;return {profile,req,distance:distanceKm(myLatitude,myLongitude,+req.pickup_latitude,+req.pickup_longitude)}}).filter(x=>x && Number.isFinite(x.distance) && x.distance <= 5).sort((a,b)=>a.distance-b.distance);
       list.forEach(x=>addContactCard(box,x.profile,x.distance,"Aho agiye: "+(x.req.destination||"Ntabwo hazwi")+" • Arasaba moto"));
       $("nearbyStatus").textContent=list.length?"Abagenzi bafite ubusabe butaremerwa, uhereye ku wegereye.":"Nta mugenzi wabonetse.";
     }
