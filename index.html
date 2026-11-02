@@ -66,6 +66,7 @@
 
         <button id="loginButton" type="submit">Injira</button>
       </form>
+      <button id="forgotPasswordButton" type="button" class="secondary" style="margin-top:10px">Wibagiwe ijambo ry'ibanga?</button>
       <hr>
       <p id="noAccountText">Nta konti urafungura?</p>
       <button id="showSignupButton" type="button" class="secondary">Iyandikishe hano</button>
@@ -95,6 +96,28 @@
         <button id="signupButton" type="submit">Iyandikishe</button>
       </form>
       <button id="backToLoginButton" type="button" class="secondary">Subira ku kwinjira</button>
+    </div>
+
+    <div id="resetRequestPane" class="hidden">
+      <h2 id="resetRequestTitle">Subiramo ijambo ry'ibanga</h2>
+      <p id="resetRequestHelp">Andika email ukoresha kuri MOTARI. Tuzakoherereza umurongo wo guhindura ijambo ry'ibanga.</p>
+      <form id="resetRequestForm">
+        <label for="resetEmail">Email</label>
+        <input id="resetEmail" type="email" autocomplete="email" required>
+        <button id="sendResetButton" type="submit">Ohereza umurongo wo kurihindura</button>
+      </form>
+      <button id="resetRequestBackButton" type="button" class="secondary">Subira ku kwinjira</button>
+    </div>
+
+    <div id="passwordRecoveryPane" class="hidden">
+      <h2 id="passwordRecoveryTitle">Shyiraho ijambo ry'ibanga rishya</h2>
+      <form id="passwordRecoveryForm">
+        <label for="newPassword">Ijambo ry'ibanga rishya</label>
+        <input id="newPassword" type="password" minlength="8" autocomplete="new-password" required>
+        <label for="confirmNewPassword">Ongera wandike ijambo ry'ibanga</label>
+        <input id="confirmNewPassword" type="password" minlength="8" autocomplete="new-password" required>
+        <button id="saveNewPasswordButton" type="submit">Bika ijambo ry'ibanga rishya</button>
+      </form>
     </div>
 
     <div id="confirmationPane" class="hidden">
@@ -399,12 +422,16 @@
     $("loginPane").classList.remove("hidden");
     $("signupPane").classList.add("hidden");
     $("confirmationPane").classList.add("hidden");
+    $("resetRequestPane").classList.add("hidden");
+    $("passwordRecoveryPane").classList.add("hidden");
   }
 
   function showSignupPane() {
     $("loginPane").classList.add("hidden");
     $("signupPane").classList.remove("hidden");
     $("confirmationPane").classList.add("hidden");
+    $("resetRequestPane").classList.add("hidden");
+    $("passwordRecoveryPane").classList.add("hidden");
     message(currentLanguage === "en" ? "Create your MOTARI account." : "Fungura konti yawe ya MOTARI.");
   }
 
@@ -412,6 +439,26 @@
     $("loginPane").classList.remove("hidden");
     $("signupPane").classList.add("hidden");
     $("confirmationPane").classList.add("hidden");
+    $("resetRequestPane").classList.add("hidden");
+    $("passwordRecoveryPane").classList.add("hidden");
+  }
+
+  function showPasswordRecoveryPane() {
+    $("loginPane").classList.add("hidden");
+    $("signupPane").classList.add("hidden");
+    $("confirmationPane").classList.add("hidden");
+    $("resetRequestPane").classList.add("hidden");
+    $("passwordRecoveryPane").classList.remove("hidden");
+    message(currentLanguage === "en" ? "Enter a new password for your MOTARI account." : "Andika ijambo ry'ibanga rishya rya konti yawe ya MOTARI.");
+  }
+
+  function showResetRequestPane() {
+    $("loginPane").classList.add("hidden");
+    $("signupPane").classList.add("hidden");
+    $("confirmationPane").classList.add("hidden");
+    $("passwordRecoveryPane").classList.add("hidden");
+    $("resetRequestPane").classList.remove("hidden");
+    $("resetEmail").value = $("loginEmail").value.trim();
   }
 
   function showConfirmationPane(email) {
@@ -1292,6 +1339,59 @@
   });
 
   $("showSignupButton").addEventListener("click", showSignupPane);
+  $("forgotPasswordButton").addEventListener("click", showResetRequestPane);
+  $("resetRequestBackButton").addEventListener("click", showLoginPane);
+
+  $("resetRequestForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const email = $("resetEmail").value.trim();
+    setBusy("sendResetButton", true, currentLanguage === "en" ? "Sending..." : "Birimo kohereza...");
+    try {
+      const redirectTo = window.location.origin + window.location.pathname;
+      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) throw error;
+      message(currentLanguage === "en"
+        ? "If this email is registered, a password reset link has been sent. Check your inbox and spam folder."
+        : "Niba iyi email ifite konti ya MOTARI, twohereje umurongo wo guhindura ijambo ry'ibanga. Reba muri inbox na spam.");
+    } catch (error) {
+      showError(error);
+    } finally {
+      setBusy("sendResetButton", false);
+    }
+  });
+
+  $("passwordRecoveryForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const password = $("newPassword").value;
+    const confirmPassword = $("confirmNewPassword").value;
+    if (password.length < 8) {
+      message(currentLanguage === "en" ? "Use at least 8 characters." : "Koresha nibura inyuguti 8.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      message(currentLanguage === "en" ? "The passwords do not match." : "Amagambo y'ibanga ntahura.");
+      return;
+    }
+    setBusy("saveNewPasswordButton", true, currentLanguage === "en" ? "Saving..." : "Birimo kubika...");
+    try {
+      const { error } = await client.auth.updateUser({ password });
+      if (error) throw error;
+      await client.auth.signOut();
+      currentUser = null;
+      currentProfile = null;
+      showLoginPane();
+      $("loginEmail").value = "";
+      $("loginPassword").value = "";
+      message(currentLanguage === "en"
+        ? "Your password has been changed. Log in using your new password."
+        : "Ijambo ry'ibanga ryawe ryahinduwe. Injira ukoresheje irishya.");
+      history.replaceState(null, "", window.location.pathname);
+    } catch (error) {
+      showError(error);
+    } finally {
+      setBusy("saveNewPasswordButton", false);
+    }
+  });
   $("backToLoginButton").addEventListener("click", showLoginPane);
   $("confirmationBackToLoginButton").addEventListener("click", showLoginPane);
 
@@ -1505,6 +1605,11 @@
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: true
+      }
+    });
+    client.auth.onAuthStateChange(async (event, session) => {
+      if (event === "PASSWORD_RECOVERY" && session) {
+        showPasswordRecoveryPane();
       }
     });
     showAuth();
