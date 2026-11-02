@@ -386,6 +386,8 @@
 
   const $ = id => document.getElementById(id);
   let client = null;
+  // Detect recovery links before the initial session check.
+  let isPasswordRecoveryFlow = /(?:^|[&#?])type=recovery(?:&|$)/.test(window.location.hash + "&" + window.location.search);
   let currentUser = null;
   let currentProfile = null;
   let motariMap = null;
@@ -1356,7 +1358,7 @@
     const email = $("resetEmail").value.trim();
     setBusy("sendResetButton", true, currentLanguage === "en" ? "Sending..." : "Birimo kohereza...");
     try {
-      const redirectTo = window.location.origin + window.location.pathname;
+      const redirectTo = "https://didiernyuzwenayo-creator.github.io/Motari/";
       const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
       message(currentLanguage === "en"
@@ -1616,8 +1618,9 @@
         detectSessionInUrl: true
       }
     });
-    client.auth.onAuthStateChange(async (event, session) => {
+    client.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" && session) {
+        isPasswordRecoveryFlow = true;
         showPasswordRecoveryPane();
       }
     });
@@ -1627,10 +1630,16 @@
       const { data, error } = await client.auth.getSession();
       if (error) throw error;
 
-      if (data.session && data.session.user) {
+      if (isPasswordRecoveryFlow && data.session) {
+        showPasswordRecoveryPane();
+      } else if (isPasswordRecoveryFlow) {
+        message(currentLanguage === "en"
+          ? "This password reset link is invalid or expired. Request a new one."
+          : "Uyu murongo wo guhindura ijambo ry'ibanga ntiwemewe cyangwa wararengeje igihe. Saba undi mushya.");
+      } else if (data.session && data.session.user) {
         await openApp(data.session.user);
       } else {
-        message("Iyandikishe cyangwa winjire muri MOTARI.");
+        message("Iyandikishe cyangwa winjire kuri MOTARI.");
       }
     } catch (error) {
       showAuth();
