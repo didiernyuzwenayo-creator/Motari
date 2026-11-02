@@ -132,6 +132,7 @@
     <h2>Konti yawe ya MOTARI</h2>
     <p id="welcome"></p>
     <p id="accountRole"></p>
+    <button id="switchToRiderButton" type="button" class="secondary hidden">Hindura konti ibe iy'umumotari</button>
 
     <div id="riderTools" class="hidden">
       <h2>🏍️ Umumotari</h2>
@@ -242,6 +243,10 @@
     "Aho uri:":"Your location:",
     "Konti y'umumotari":"Rider account",
     "Konti y'umugenzi":"Passenger account",
+    "Hindura konti ibe iy'umumotari":"Switch account to rider",
+    "Guhindura konti yawe ikaba iy'umumotari? Uzabanza gutegereza ko umuyobozi yemeza konti y'umumotari.":"Change your account to a rider account? You will need administrator verification before appearing to passengers.",
+    "Konti yawe yahinduwe iba iy'umumotari. Ugomba gutegereza kwemezwa n'umuyobozi mbere yo kugaragara ku bagenzi.":"Your account is now a rider account. You must wait for administrator verification before appearing to passengers.",
+    "Ntibyashobotse guhindura ubwoko bwa konti: ":"Could not change account type: ",
     "Abamotari bakwegereye":"Riders near you",
     "Abagenzi bakwegereye":"Passengers near you",
     "Turimo gushaka abantu bakwegereye...":"Finding people near you...",
@@ -837,6 +842,7 @@
 
     $("riderTools").classList.toggle("hidden", profile.role !== "rider");
     $("passengerTools").classList.toggle("hidden", profile.role !== "passenger");
+    $("switchToRiderButton").classList.toggle("hidden", profile.role !== "passenger");
     $("offlineRidersCard").classList.toggle("hidden", profile.role !== "passenger");
     if (profile.role === "rider") {
       message("Turimo kubika aho uherereye kugira ngo abagenzi bashobore kukubona ku rutonde rw'abamotari batari online.");
@@ -1346,6 +1352,37 @@
       showError(error);
     } finally {
       setBusy("signupButton", false);
+    }
+  });
+
+  $("switchToRiderButton").addEventListener("click", async () => {
+    if (!currentUser || !currentProfile || currentProfile.role !== "passenger") return;
+    const warning = currentLanguage === "en"
+      ? "Change your account to a rider account? You will need administrator verification before appearing to passengers."
+      : "Guhindura konti yawe ikaba iy'umumotari? Uzabanza gutegereza ko umuyobozi yemeza konti y'umumotari.";
+    if (!window.confirm(warning)) return;
+
+    const button = $("switchToRiderButton");
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = currentLanguage === "en" ? "Updating..." : "Birimo guhindura...";
+    try {
+      const { data, error } = await client
+        .from("profiles")
+        .update({ role: "rider" })
+        .eq("id", currentUser.id)
+        .select("id, full_name, phone, role")
+        .single();
+      if (error) throw error;
+      currentProfile = data;
+      showApp(data);
+      message("Konti yawe yahinduwe iba iy'umumotari. Ugomba gutegereza kwemezwa n'umuyobozi mbere yo kugaragara ku bagenzi.");
+      startLiveUpdates();
+    } catch (error) {
+      showError(new Error("Ntibyashobotse guhindura ubwoko bwa konti: " + (error?.message || "Ongera ugerageze.")));
+      button.textContent = originalText;
+    } finally {
+      button.disabled = false;
     }
   });
 
