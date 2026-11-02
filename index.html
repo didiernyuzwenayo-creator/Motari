@@ -171,6 +171,14 @@
   let currentLanguage = localStorage.getItem(languageKey) === "en" ? "en" : "rw";
   const translations = {
     "Injira kuri MOTARI":"Log in to MOTARI",
+    "Wibagiwe ijambo ry'ibanga?":"Forgot password?",
+    "Subiramo ijambo ry'ibanga":"Reset your password",
+    "Andika email ukoresha kuri MOTARI. Tuzakoherereza umurongo wo guhindura ijambo ry'ibanga.":"Enter the email you use for MOTARI. We will send you a password reset link.",
+    "Ohereza umurongo wo kurihindura":"Send password reset link",
+    "Shyiraho ijambo ry'ibanga rishya":"Set a new password",
+    "Ijambo ry'ibanga rishya":"New password",
+    "Ongera wandike ijambo ry'ibanga":"Confirm new password",
+    "Bika ijambo ry'ibanga rishya":"Save new password",
     "Iyandikishe cyangwa winjire muri MOTARI.":"Please sign up or log in to MOTARI.",
     "Fungura konti yawe ya MOTARI.":"Create your MOTARI account.",
     "Create your MOTARI account.":"Create your MOTARI account.",
@@ -444,6 +452,7 @@
   }
 
   function showPasswordRecoveryPane() {
+    showAuth();
     $("loginPane").classList.add("hidden");
     $("signupPane").classList.add("hidden");
     $("confirmationPane").classList.add("hidden");
