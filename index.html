@@ -1390,6 +1390,7 @@
       await client.auth.signOut();
       currentUser = null;
       currentProfile = null;
+      isPasswordRecoveryFlow = false;
       showLoginPane();
       $("loginEmail").value = "";
       $("loginPassword").value = "";
