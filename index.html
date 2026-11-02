@@ -63,6 +63,7 @@
 
         <label for="loginPassword">Ijambo ry'ibanga</label>
         <input id="loginPassword" type="password" autocomplete="current-password" required>
+        <label class="show-password-toggle"><input id="showLoginPassword" type="checkbox" data-password-target="loginPassword"> Erekana ijambo ry'ibanga</label>
 
         <button id="loginButton" type="submit">Injira</button>
       </form>
@@ -92,6 +93,7 @@
 
         <label for="signupPassword">Ijambo ry'ibanga</label>
         <input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="Nibura inyuguti 8">
+        <label class="show-password-toggle"><input id="showSignupPassword" type="checkbox" data-password-target="signupPassword"> Erekana ijambo ry'ibanga</label>
 
         <button id="signupButton" type="submit">Iyandikishe</button>
       </form>
@@ -114,8 +116,10 @@
       <form id="passwordRecoveryForm">
         <label for="newPassword">Ijambo ry'ibanga rishya</label>
         <input id="newPassword" type="password" minlength="8" autocomplete="new-password" required>
+        <label class="show-password-toggle"><input id="showNewPassword" type="checkbox" data-password-target="newPassword"> Erekana ijambo ry'ibanga</label>
         <label for="confirmNewPassword">Ongera wandike ijambo ry'ibanga</label>
         <input id="confirmNewPassword" type="password" minlength="8" autocomplete="new-password" required>
+        <label class="show-password-toggle"><input id="showConfirmNewPassword" type="checkbox" data-password-target="confirmNewPassword"> Erekana ijambo ry'ibanga</label>
         <button id="saveNewPasswordButton" type="submit">Bika ijambo ry'ibanga rishya</button>
       </form>
     </div>
@@ -177,6 +181,7 @@
     "Andika email ukoresha kuri MOTARI. Tuzakoherereza umurongo wo guhindura ijambo ry'ibanga.":"Enter the email you use for MOTARI. We will send you a password reset link.",
     "Ohereza umurongo wo kurihindura":"Send password reset link",
     "Shyiraho ijambo ry'ibanga rishya":"Set a new password",
+    "Erekana ijambo ry'ibanga":"Show password",
     "Ijambo ry'ibanga rishya":"New password",
     "Ongera wandike ijambo ry'ibanga":"Confirm new password",
     "Bika ijambo ry'ibanga rishya":"Save new password",
@@ -1384,6 +1389,13 @@
     } finally {
       button.disabled = false;
     }
+  });
+
+  document.querySelectorAll("[data-password-target]").forEach(toggle => {
+    toggle.addEventListener("change", () => {
+      const input = $(toggle.dataset.passwordTarget);
+      if (input) input.type = toggle.checked ? "text" : "password";
+    });
   });
 
   $("showSignupButton").addEventListener("click", showSignupPane);
