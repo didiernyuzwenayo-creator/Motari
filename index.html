@@ -45,7 +45,8 @@ button.secondary:hover{background:#d9efe2}
 #appSection>h2,#appSection>#welcome,#appSection>#accountRole,#appSection>#switchToRiderButton,#appSection>#logoutButton,#appSection>#requests{grid-column:1/-1}
 #appSection>.card{width:100%;margin:0;min-width:0}
 #appSection>.card:first-child{grid-column:1/-1}
-#appSection>#riderTools,#appSection>#passengerTools{padding:20px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#fff,#f8fbf9)}
+#appSection>.profile-summary,#appSection>#riderTools,#appSection>#passengerTools{padding:20px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,#fff,#f8fbf9)}
+#appSection>.profile-summary{align-self:stretch}
 #appSection>#nearbyContacts{min-width:0}
 #motariMap{height:350px!important;border-radius:14px;border:1px solid var(--line);z-index:0}
 #nearbyContacts>div,#offlineRidersList>div{background:#fbfdfc}
@@ -181,7 +182,7 @@ a{color:var(--green-dark);font-weight:700}
       <p id="mapStatus" role="status">Ikarita iri gutegurwa...</p>
       <button id="mapLocationButton" class="secondary" type="button">Erekana aho ndi ku ikarita</button>
     </div>
-    <div>
+    <div class="profile-summary">
       <h2>Konti yawe ya MOTARI</h2>
       <p id="welcome"></p>
       <p id="accountRole"></p>
