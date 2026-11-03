@@ -502,6 +502,12 @@ a{color:var(--green-dark);font-weight:700}
   }
 
   function showAuth() {
+    stopPassengerLocationSharing();
+    if (headerLocationWatchId !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(headerLocationWatchId);
+      headerLocationWatchId = null;
+    }
+    $("location-name").style.display = "none";
     $("authSection").classList.remove("hidden");
     $("appSection").classList.add("hidden");
     $("loginPane").classList.remove("hidden");
