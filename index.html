@@ -466,6 +466,9 @@ a{color:var(--green-dark);font-weight:700}
   let myMapMarker = null;
   let riderWatchId = null;
   let riderHeartbeatTimer = null;
+  let passengerWatchId = null;
+  let passengerHeartbeatTimer = null;
+  let passengerPersistedAt = 0;
   let lastRiderLatitude = null;
   let lastRiderLongitude = null;
   let riderPersistedAt = 0;
@@ -886,6 +889,15 @@ a{color:var(--green-dark);font-weight:700}
     navigator.geolocation.getCurrentPosition(pos => {
       const lat = pos.coords.latitude, lon = pos.coords.longitude;
       myLatitude = lat; myLongitude = lon;
+      if (currentUser && currentProfile?.role === "passenger") {
+        client.from("passenger_locations").upsert({
+          passenger_id: currentUser.id, latitude: lat, longitude: lon,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "passenger_id" }).then(({ error }) => {
+          if (error) console.warn("MOTARI passenger location save:", error.message);
+          else { loadNearbyContacts(); loadNearbyOfflineRiders(); }
+        });
+      }
       if (!motariMap) return;
       if (myMapMarker) myMapMarker.setLatLng([lat, lon]);
       else myMapMarker = L.marker([lat, lon]).addTo(motariMap).bindPopup("Aho uri");
@@ -897,6 +909,66 @@ a{color:var(--green-dark);font-weight:700}
       loadNearbyOfflineRiders();
       loadRiderLocations();
     }, () => { $("mapStatus").textContent = "Emera GPS kuri telefone, wongere ugerageze."; }, { enableHighAccuracy:true, timeout:15000, maximumAge:10000 });
+  }
+
+  async function persistPassengerLocation(latitude, longitude) {
+    if (!currentUser || currentProfile?.role !== "passenger") return;
+    const { error } = await client.from("passenger_locations").upsert({
+      passenger_id: currentUser.id,
+      latitude,
+      longitude,
+      updated_at: new Date().toISOString()
+    }, { onConflict: "passenger_id" });
+    if (error) {
+      console.warn("MOTARI passenger GPS save failed:", error.message);
+      return;
+    }
+    loadNearbyContacts();
+    loadNearbyOfflineRiders();
+  }
+
+  function startPassengerLocationSharing() {
+    if (!currentUser || currentProfile?.role !== "passenger" || !navigator.geolocation) return;
+    if (passengerWatchId !== null) navigator.geolocation.clearWatch(passengerWatchId);
+    passengerWatchId = navigator.geolocation.watchPosition(position => {
+      const { latitude, longitude } = position.coords;
+      myLatitude = latitude;
+      myLongitude = longitude;
+      const point = [latitude, longitude];
+      if (motariMap) {
+        if (myMapMarker) myMapMarker.setLatLng(point);
+        else myMapMarker = L.marker(point).addTo(motariMap).bindPopup("Aho uri");
+      }
+      updateLocationName(latitude, longitude);
+      if (Date.now() - passengerPersistedAt >= 10000) {
+        passengerPersistedAt = Date.now();
+        persistPassengerLocation(latitude, longitude);
+      }
+    }, error => {
+      console.warn("MOTARI passenger GPS:", error.message);
+      if (!Number.isFinite(myLatitude) || !Number.isFinite(myLongitude)) {
+        $("mapStatus").textContent = currentLanguage === "en"
+          ? "Allow location access so MOTARI can find nearby riders."
+          : "Emera GPS kugira ngo MOTARI ibone abamotari bakwegereye.";
+      }
+    }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+
+    if (passengerHeartbeatTimer) clearInterval(passengerHeartbeatTimer);
+    passengerHeartbeatTimer = setInterval(() => {
+      if (currentProfile?.role === "passenger" &&
+          Number.isFinite(myLatitude) && Number.isFinite(myLongitude)) {
+        persistPassengerLocation(myLatitude, myLongitude);
+      }
+    }, 60000);
+  }
+
+  function stopPassengerLocationSharing() {
+    if (passengerWatchId !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(passengerWatchId);
+    }
+    passengerWatchId = null;
+    if (passengerHeartbeatTimer) clearInterval(passengerHeartbeatTimer);
+    passengerHeartbeatTimer = null;
   }
 
   function showApp(profile) {
@@ -912,8 +984,11 @@ a{color:var(--green-dark);font-weight:700}
     $("switchToRiderButton").classList.toggle("hidden", profile.role !== "passenger");
     $("offlineRidersCard").classList.toggle("hidden", profile.role !== "passenger");
     if (profile.role === "rider") {
+      stopPassengerLocationSharing();
       message("Turimo kubika aho uherereye kugira ngo abagenzi bashobore kukubona ku rutonde rw'abamotari batari online.");
       saveRiderLoginLocation();
+    } else {
+      startPassengerLocationSharing();
     }
     initMotariMap();
     locateOnMap();
@@ -1480,6 +1555,7 @@ a{color:var(--green-dark);font-weight:700}
         .select("id, full_name, phone, role")
         .single();
       if (error) throw error;
+      stopPassengerLocationSharing();
       currentProfile = data;
       showApp(data);
       message("Konti yawe yahinduwe iba iy'umumotari. Ushobora guhita usangiza GPS yawe.");
@@ -1684,10 +1760,22 @@ a{color:var(--green-dark);font-weight:700}
 
     navigator.geolocation.getCurrentPosition(async position => {
       try {
+        const pickupLatitude = position.coords.latitude;
+        const pickupLongitude = position.coords.longitude;
+        const { error: locationError } = await client.from("passenger_locations").upsert({
+          passenger_id: currentUser.id,
+          latitude: pickupLatitude,
+          longitude: pickupLongitude,
+          updated_at: new Date().toISOString()
+        }, { onConflict: "passenger_id" });
+        if (locationError) throw locationError;
+
+        myLatitude = pickupLatitude;
+        myLongitude = pickupLongitude;
         const { error } = await client.from("ride_requests").insert({
           passenger_id: currentUser.id,
-          pickup_latitude: position.coords.latitude,
-          pickup_longitude: position.coords.longitude,
+          pickup_latitude: pickupLatitude,
+          pickup_longitude: pickupLongitude,
           destination,
           status: "pending"
         });
@@ -1720,6 +1808,7 @@ a{color:var(--green-dark);font-weight:700}
 
   $("logoutButton").addEventListener("click", async () => {
     try {
+      stopPassengerLocationSharing();
       if (riderWatchId !== null) {
         navigator.geolocation.clearWatch(riderWatchId);
         riderWatchId = null;
