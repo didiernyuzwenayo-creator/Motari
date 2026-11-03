@@ -1799,8 +1799,14 @@ a{color:var(--green-dark);font-weight:700}
 
   $("refreshButton").addEventListener("click", async () => {
     try {
-      await loadRequests();
-      message("Amakuru avuguruwe.");
+      locateOnMap();
+      await Promise.all([
+        loadRequests(),
+        loadNearbyContacts(),
+        loadNearbyOfflineRiders(),
+        loadRiderLocations()
+      ]);
+      message(currentLanguage === "en" ? "Nearby people and ride requests refreshed." : "Abantu bakwegereye n'ibyifuzo by'ingendo byavuguruwe.");
     } catch (error) {
       showError(error);
     }
