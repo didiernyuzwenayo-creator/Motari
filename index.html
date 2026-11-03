@@ -1207,6 +1207,27 @@ a{color:var(--green-dark);font-weight:700}
           !Number.isFinite(myLatitude) || !Number.isFinite(myLongitude)) return false;
       return distanceKm(myLatitude, myLongitude, Number(item.pickup_latitude), Number(item.pickup_longitude)) <= 5;
     });
+    if (currentProfile.role === "rider") {
+      data.sort((a, b) => {
+        if (a.status === "accepted" && b.status !== "accepted") return -1;
+        if (b.status === "accepted" && a.status !== "accepted") return 1;
+        return distanceKm(myLatitude, myLongitude, Number(a.pickup_latitude), Number(a.pickup_longitude)) -
+          distanceKm(myLatitude, myLongitude, Number(b.pickup_latitude), Number(b.pickup_longitude));
+      });
+    }
+    const acceptedCounterpartIds = [...new Set(data
+      .filter(item => item.status === "accepted")
+      .map(item => currentProfile.role === "rider" ? item.passenger_id : item.rider_id)
+      .filter(Boolean))];
+    let counterpartById = new Map();
+    if (acceptedCounterpartIds.length) {
+      const { data: counterpartProfiles, error: counterpartError } = await client
+        .from("profiles")
+        .select("id,full_name,phone,role")
+        .in("id", acceptedCounterpartIds);
+      if (counterpartError) console.warn("MOTARI accepted ride contact lookup:", counterpartError.message);
+      counterpartById = new Map((counterpartProfiles || []).map(profile => [profile.id, profile]));
+    }
     if (data.length === 0) {
       const empty = document.createElement("p");
       empty.textContent = currentProfile.role === "rider"
@@ -1222,6 +1243,19 @@ a{color:var(--green-dark);font-weight:700}
       details.textContent = "Aho ajya: " + (item.destination || "Ntabwo hazwi") +
         " — " + ({pending:"Birategereje umumotari",accepted:"Umumotari yemeye urugendo"}[item.status] || item.status);
       row.appendChild(details);
+      if (item.status === "accepted") {
+        const counterpartId = currentProfile.role === "rider" ? item.passenger_id : item.rider_id;
+        const counterpart = counterpartById.get(counterpartId);
+        if (counterpart) {
+          const distance = Number.isFinite(myLatitude) && Number.isFinite(myLongitude)
+            ? distanceKm(myLatitude, myLongitude, Number(item.pickup_latitude), Number(item.pickup_longitude))
+            : NaN;
+          addContactCard(row, counterpart, distance,
+            currentLanguage === "en"
+              ? (currentProfile.role === "rider" ? "Passenger for this ride" : "Your rider")
+              : (currentProfile.role === "rider" ? "Umugenzi mwemeranyije urugendo" : "Umumotari wemeye urugendo"));
+        }
+      }
       if (currentProfile.role === "rider" && item.status === "pending" && !item.rider_id) {
         const accept = document.createElement("button");
         accept.type = "button";
