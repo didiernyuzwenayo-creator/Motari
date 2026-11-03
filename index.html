@@ -252,8 +252,8 @@
     "Konti y'umumotari":"Rider account",
     "Konti y'umugenzi":"Passenger account",
     "Hindura konti ibe iy'umumotari":"Switch account to rider",
-    "Guhindura konti yawe ikaba iy'umumotari? Uzabanza gutegereza ko umuyobozi yemeza konti y'umumotari.":"Change your account to a rider account? You will need administrator verification before appearing to passengers.",
-    "Konti yawe yahinduwe iba iy'umumotari. Ugomba gutegereza kwemezwa n'umuyobozi mbere yo kugaragara ku bagenzi.":"Your account is now a rider account. You must wait for administrator verification before appearing to passengers.",
+    "Guhindura konti yawe ikaba iy'umumotari?":"Change your account to a rider account?",
+    "Konti yawe yahinduwe iba iy'umumotari. Ushobora guhita usangiza GPS yawe.":"Your account is now a rider account. You can share your GPS right away.",
     "Ntibyashobotse guhindura ubwoko bwa konti: ":"Could not change account type: ",
     "Abamotari bakwegereye":"Riders near you",
     "Abagenzi bakwegereye":"Passengers near you",
@@ -295,7 +295,7 @@
     "Winjiye muri MOTARI. Emerera GPS kuri telefone kugira ngo tubike aho uherereye ku rutonde rw'abamotari batari online.":"You are logged in. Allow GPS on your phone to save your location in the offline riders list.",
     "Banza wemere GPS yawe kugira ngo tubone abamotari bo mu gace urimo.":"Allow GPS so we can find riders in your area.",
     "Turimo gushaka abamotari baherutse kugaragara muri aka gace...":"Looking for riders recently seen in this area...",
-    "Nta mumotari wemejwe uraboneka muri sisitemu.":"No riders are currently available in the system.",
+    "Nta mumotari uraboneka muri sisitemu.":"No riders are currently available in the system.",
     "Nta mumotari uzwi uherutse kugaragara muri kilometero 5 uvuye aho uri mu masaha 24 ashize.":"No riders with a saved location were found within 5 km in the past 24 hours.",
     "Abamotari batari online ariko baherutse kugaragara muri kilometero 5. Aho baherukaga ni amakuru ashaje.":"Offline riders recently seen within 5 km. Their last known locations may be outdated.",
     "Agace aherukagamo":"Last known area",
@@ -303,8 +303,8 @@
     "Yaherukaga kugaragara hashize amasaha ":"Last seen ",
     "Wahisemo Ikinyarwanda.":"You selected Kinyarwanda.",
     "Language changed to English.":"Language changed to English.",
-    "Konti y'umumotari iracyategereje kwemezwa n'umuyobozi. Nyuma yo kwemezwa, uzashobora gusangiza GPS no kugaragara ku bagenzi.":"Your rider account is awaiting administrator verification. After verification, you can share GPS and appear to passengers.",
-    "Konti y'umumotari iracyategereje kwemezwa n'umuyobozi. Ntushobora kugaragara ku bagenzi utaremezwa.":"Your rider account is awaiting administrator verification. You cannot appear to passengers until verified.",
+    "":"",
+    "":"",
     "Wemeye urugendo. Hamagara umugenzi ukoresheje amakuru mwumvikanyeho.":"You accepted the ride. Contact the passenger using the details you agreed on.",
     "Ntibyashobotse kwemera urugendo: ":"Could not accept the ride: ",
     "Ntibyashobotse kurangiza urugendo: ":"Could not complete the ride: ",
@@ -1366,8 +1366,8 @@
   $("switchToRiderButton").addEventListener("click", async () => {
     if (!currentUser || !currentProfile || currentProfile.role !== "passenger") return;
     const warning = currentLanguage === "en"
-      ? "Change your account to a rider account? You will need administrator verification before appearing to passengers."
-      : "Guhindura konti yawe ikaba iy'umumotari? Uzabanza gutegereza ko umuyobozi yemeza konti y'umumotari.";
+      ? "Change your account to a rider account?"
+      : "Guhindura konti yawe ikaba iy'umumotari?";
     if (!window.confirm(warning)) return;
 
     const button = $("switchToRiderButton");
@@ -1384,7 +1384,7 @@
       if (error) throw error;
       currentProfile = data;
       showApp(data);
-      message("Konti yawe yahinduwe iba iy'umumotari. Ugomba gutegereza kwemezwa n'umuyobozi mbere yo kugaragara ku bagenzi.");
+      message("Konti yawe yahinduwe iba iy'umumotari. Ushobora guhita usangiza GPS yawe.");
       startLiveUpdates();
     } catch (error) {
       showError(new Error("Ntibyashobotse guhindura ubwoko bwa konti: " + (error?.message || "Ongera ugerageze.")));
